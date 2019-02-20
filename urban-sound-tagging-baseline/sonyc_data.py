@@ -1,3 +1,4 @@
+# Copy from https://github.com/sonyc-project/sensor-embedding/blob/master/sensor_embedding/downstream/sonyc_data.py
 import numpy as np
 import csv
 from collections import OrderedDict
