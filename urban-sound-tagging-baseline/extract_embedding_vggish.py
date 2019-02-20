@@ -15,8 +15,6 @@ from .vggish import vggish_slim
 
 from .sonyc_data import load_sonyc_data
 
-TARGET_DURATION = 1.0  # seconds
-
 
 def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='vggish/input_features',
                                   output_op_name='vggish/embedding', embedding_size=128, resources_dir=None):
@@ -85,7 +83,7 @@ def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='v
         pass
 
 
-def extract_embeddings_vggish(annotation_path, audio_dir, output_dir, exp_id, frame_duration=1.0, hop_duration=0.1,
+def extract_embeddings_vggish(annotation_path, audio_dir, output_dir, exp_id, frame_duration=0.96, hop_duration=0.96,
                               progress=True, vggish_resource_dir='/home/jtc440/dev/l3embedding/resources/vggish',
                               vggish_embedding_size=128):
     """
@@ -142,9 +140,8 @@ if __name__ == "__main__":
     parser.add_argument("--vggish_resource_dir")
     parser.add_argument("--vggish_embedding_size", type=int, default=128)
 
-    parser.add_argument("--sr", type=int, default=48000)
-    parser.add_argument("--frame_duration", type=float, default=1.0)
-    parser.add_argument("--hop_duration", type=float, default=0.1)
+    parser.add_argument("--frame_duration", type=float, default=0.96)
+    parser.add_argument("--hop_duration", type=float, default=0.96)
     parser.add_argument("--progress", action="store_const", const=True, default=False)
 
     args = parser.parse_args()
@@ -155,7 +152,6 @@ if __name__ == "__main__":
                               exp_id=args.expid,
                               vggish_resource_dir=args.vggish_resource_dir,
                               vggish_embedding_size=args.vggish_embedding_size,
-                              sr=args.sr,
                               frame_duration=args.frame_duration,
                               hop_duration=args.hop_duration,
                               progress=args.progress)
