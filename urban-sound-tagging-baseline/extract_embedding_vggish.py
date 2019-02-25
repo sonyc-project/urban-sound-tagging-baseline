@@ -4,10 +4,7 @@ import os
 import numpy as np
 from tqdm import tqdm
 
-import keras
 import tensorflow as tf
-from kapre.time_frequency import Melspectrogram
-
 
 from .vggish import vggish_input
 from .vggish import vggish_postprocess
