@@ -225,6 +225,10 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_l
     X_train = []
     y_train = []
     for idx in train_file_idxs:
+        # Skip any "other" or "unknown" examples
+        if not np.any(target_list[idx]):
+            continue
+
         X_ = list(embeddings[idx])
         X_train += X_
         for _ in range(len(X_)):
@@ -316,7 +320,7 @@ def train_mlp(model, x_train, y_train, output_dir, batch_size=64,
 
 ## MODEL TRAINING
 
-def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="low", batch_size=64,
+def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="fine", batch_size=64,
                   num_epochs=100, patience=20, learning_rate=1e-4, hidden_layer_size=128,
                   l2_reg=1e-5, standardize=True, timestamp=None):
     """
@@ -343,14 +347,14 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="lo
     -------
 
     """
-    file_list, high_target_list, low_target_list, train_file_idxs, test_file_idxs = load_sonyc_data(annotation_path)
+    file_list, coarse_target_list, fine_target_list, train_file_idxs, test_file_idxs = load_sonyc_data(annotation_path)
 
-    if label_mode == "low":
-        target_list = low_target_list
-        labels = sonyc_data.LOW_LEVEL_LABELS
-    elif label_mode == "high":
-        target_list = high_target_list
-        labels = sonyc_data.HIGH_LEVEL_LABELS
+    if label_mode == "fine":
+        target_list = fine_target_list
+        labels = sonyc_data.FINE_LEVEL_LABELS
+    elif label_mode == "coarse":
+        target_list = coarse_target_list
+        labels = sonyc_data.COARSE_LEVEL_LABELS
     else:
         raise ValueError("Invalid label mode: {}".format(label_mode))
 
@@ -445,31 +449,38 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
         csvwriter = csv.writer(f)
 
         # Write fields
-        fields = ["audio_filename"] + sonyc_data.LOW_LEVEL_LABELS + sonyc_data.HIGH_LEVEL_LABELS
+        fields = ["audio_filename"]
+        fields += ["fine_" + x for x in sonyc_data.FINE_LEVEL_LABELS]
+        fields += ["coarse_" + x for x in sonyc_data.COARSE_LEVEL_LABELS]
         csvwriter.writerow(fields)
 
         # Write results for each file to CSV
         for filename, y, in zip(test_file_list, y_pred):
             row = [filename]
 
-            if label_mode == "low":
-                # Add low level labels
+            if label_mode == "fine":
+                # Add fine level labels
                 row += list(y)
-                # Add high level labels corresponding to low level predictions
+                # Add coarse level labels corresponding to fine level predictions
                 # Obtain by taking the maximum from the fine level labels
-                high_values = [0 for _ in range(len(sonyc_data.HIGH_LEVEL_LABELS))]
-                low_idx = 0
-                for high_idx, (high_label, low_label_list) in enumerate(sonyc_data.taxonomy.items()):
-                    for _ in range(len(low_label_list)):
-                        high_values[high_idx] = max(high_values[high_idx], y[low_idx])
-                        low_idx += 1
+                coarse_values = [0 for _ in range(len(sonyc_data.COARSE_LEVEL_LABELS))]
+                coarse_idx = 0
+                fine_idx = 0
+                for coarse_label in sonyc_data.COARSE_LEVEL_LABELS:
+                    fine_label_list = sonyc_data.taxonomy[coarse_label]
+                    for fine_label in fine_label_list:
+                        if fine_label not in sonyc_data.FINE_LEVEL_LABELS:
+                            continue
+                        coarse_values[coarse_idx] = max(coarse_values[coarse_idx], y[fine_idx])
+                        fine_idx += 1
+                    coarse_idx += 1
 
-                row += high_values
+                row += coarse_values
 
             else:
-                # Add placeholder values for low level
-                row += [-1 for _ in range(len(sonyc_data.LOW_LEVEL_LABELS))]
-                # Add high level labels
+                # Add placeholder values for fine level
+                row += [-1 for _ in range(len(sonyc_data.FINE_LEVEL_LABELS))]
+                # Add coarse level labels
                 row += list(y)
 
             csvwriter.writerow(row)
@@ -490,8 +501,8 @@ if __name__ == '__main__':
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--no_standardize", action='store_true')
     parser.add_argument("--num_classes", type=int, default=10)
-    parser.add_argument("--label_mode", type=str, choices=["low", "high"],
-                        default='low')
+    parser.add_argument("--label_mode", type=str, choices=["fine", "coarse"],
+                        default='fine')
 
     args = parser.parse_args()
 

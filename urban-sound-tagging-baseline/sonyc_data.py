@@ -46,8 +46,13 @@ taxonomy = OrderedDict([
 ])
 
 
-LOW_LEVEL_LABELS = [y for x in taxonomy.values() for y in x]
-HIGH_LEVEL_LABELS = list(taxonomy.keys())
+ALL_FINE_LEVEL_LABELS = [y for x in taxonomy.values() for y in x]
+ALL_COARSE_LEVEL_LABELS = list(taxonomy.keys())
+
+FINE_LEVEL_LABELS = [x for x in ALL_FINE_LEVEL_LABELS
+                    if "uncertain" not in x and "other" not in x]
+COARSE_LEVEL_LABELS = [x for x in ALL_COARSE_LEVEL_LABELS
+                    if "uncertain" not in x and "other" not in x]
 
 
 def load_sonyc_data(annotation_path):
@@ -61,8 +66,8 @@ def load_sonyc_data(annotation_path):
     Returns
     -------
     file_list
-    high_target_list
-    low_target_list
+    coarse_target_list
+    fine_target_list
     train_idxs
     eval_idxs
 
@@ -71,8 +76,8 @@ def load_sonyc_data(annotation_path):
     file_list = []
     train_idxs = []
     eval_idxs = []
-    high_level_anns = {}
-    low_level_anns = {}
+    coarse_level_anns = {}
+    fine_level_anns = {}
 
     with open(annotation_path, 'r') as f:
         reader = csv.DictReader(f)
@@ -88,32 +93,32 @@ def load_sonyc_data(annotation_path):
                 else:
                     eval_idxs.append(idx)
 
-                low_level_anns[filename] = []
-                high_level_anns[filename] = []
+                fine_level_anns[filename] = []
+                coarse_level_anns[filename] = []
                 idx += 1
 
-            low_distr = []
-            for low_label in LOW_LEVEL_LABELS:
-                val = float(row['low_' + low_label + '_presence'])
-                low_distr.append(val)
-            low_distr = np.clip(np.array(low_distr), 0, 1)
-            low_level_anns[filename].append(low_distr)
+            fine_distr = []
+            for fine_label in FINE_LEVEL_LABELS:
+                val = float(row['low_' + fine_label + '_presence'])
+                fine_distr.append(val)
+            fine_distr = np.clip(np.array(fine_distr), 0, 1)
+            fine_level_anns[filename].append(fine_distr)
 
 
-            high_distr = []
-            for high_label in HIGH_LEVEL_LABELS:
-                val = float(row['high_' + high_label + '_presence'])
-                high_distr.append(val)
-            high_distr = np.clip(np.array(high_distr), 0, 1)
-            high_level_anns[filename].append(high_distr)
+            coarse_distr = []
+            for coarse_label in COARSE_LEVEL_LABELS:
+                val = float(row['high_' + coarse_label + '_presence'])
+                coarse_distr.append(val)
+            coarse_distr = np.clip(np.array(coarse_distr), 0, 1)
+            coarse_level_anns[filename].append(coarse_distr)
 
-    high_target_list = []
-    low_target_list = []
+    coarse_target_list = []
+    fine_target_list = []
 
     for filename in file_list:
-        low_target = np.array(low_level_anns[filename]).mean(axis=0)
-        low_target_list.append(low_target)
-        high_target = np.array(high_level_anns[filename]).mean(axis=0)
-        high_target_list.append(high_target)
+        fine_target = np.array(fine_level_anns[filename]).mean(axis=0)
+        fine_target_list.append(fine_target)
+        coarse_target = np.array(coarse_level_anns[filename]).mean(axis=0)
+        coarse_target_list.append(coarse_target)
 
-    return file_list, high_target_list, low_target_list, train_idxs, eval_idxs
+    return file_list, coarse_target_list, fine_target_list, train_idxs, eval_idxs
