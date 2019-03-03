@@ -6,11 +6,11 @@ from tqdm import tqdm
 
 import tensorflow as tf
 
-from .vggish import vggish_input
-from .vggish import vggish_postprocess
-from .vggish import vggish_slim
+from vggish import vggish_input
+from vggish import vggish_postprocess
+from vggish import vggish_slim
 
-from .sonyc_data import load_sonyc_data
+from sonyc_data import load_sonyc_data
 
 
 def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='vggish/input_features',
@@ -56,7 +56,14 @@ def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='v
                 # without having to constantly reload the model
                 audio_path, output_path = (yield)
 
-                examples_batch = vggish_input.wavfile_to_examples(audio_path, **params)
+                if os.path.exists(output_path):
+                    continue
+
+                try:
+                    examples_batch = vggish_input.wavfile_to_examples(audio_path, **params)
+                except ValueError:
+                    print("Error opening {}. Skipping...".format(audio_path))
+                    continue
 
                 # Prepare a postprocessor to munge the model embeddings.
                 pproc = vggish_postprocess.Postprocessor(pca_params_path, **params)

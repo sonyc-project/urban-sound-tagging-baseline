@@ -1,4 +1,5 @@
 import argparse
+import csv
 import datetime
 import json
 import gzip
@@ -14,8 +15,8 @@ import keras.backend as K
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, average_precision_score, precision_score, recall_score
 
-from .sonyc_data import load_sonyc_data
-from . import sonyc_data
+import sonyc_data
+from sonyc_data import load_sonyc_data
 
 
 ## HELPERS
@@ -48,15 +49,21 @@ def load_embeddings(file_list, emb_dir):
     Returns
     -------
     embeddings
+    ignore_idxs
 
     """
     embeddings = []
-    for filename in file_list:
+    ignore_idxs = []
+    for idx, filename in enumerate(file_list):
         emb_path = os.path.join(emb_dir, os.path.splitext(filename)[0] + '.npy.gz')
-        with gzip.open(emb_path, 'rb') as f:
-            embeddings.append(np.load(f))
+        try:
+            with gzip.open(emb_path, 'rb') as f:
+                embeddings.append(np.load(f))
+        except:
+            embeddings.append(None)
+            ignore_idxs.append(idx)
 
-    return embeddings
+    return embeddings, ignore_idxs
 
 
 def softmax(X, theta=1.0, axis=None):
@@ -193,26 +200,24 @@ def construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=128, l2_reg
 
 ## DATA PREPARATION
 
-def prepare_framewise_data(train_file_idxs, valid_file_idxs, embeddings, target_list, standardize=True,
-                           thresh_type="mean"):
+def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_list, standardize=True):
     """
-    Prepare inputs and targets for framewise training using training and validation indices.
+    Prepare inputs and targets for framewise training using training and evaluation indices.
 
     Parameters
     ----------
     train_file_idxs
-    valid_file_idxs
+    test_file_idxs
     embeddings
     target_list
     standardize
-    thresh_type
 
     Returns
     -------
     X_train
     y_train
-    X_valid
-    y_valid
+    X_test
+    y_test
     scaler
 
     """
@@ -230,32 +235,32 @@ def prepare_framewise_data(train_file_idxs, valid_file_idxs, embeddings, target_
     X_train = np.array(X_train)[train_idxs]
     y_train = np.array(y_train)[train_idxs]
 
-    X_valid = []
-    y_valid = []
-    for idx in valid_file_idxs:
+    X_test = []
+    y_test = []
+    for idx in test_file_idxs:
         X_ = list(embeddings[idx])
-        X_valid += X_
+        X_test += X_
         for _ in range(len(X_)):
-            y_valid.append(target_list[idx])
+            y_test.append(target_list[idx])
 
-    valid_idxs = np.random.permutation(len(X_valid))
-    X_valid = np.array(X_valid)[valid_idxs]
-    y_valid = np.array(y_valid)[valid_idxs]
+    test_idxs = np.random.permutation(len(X_test))
+    X_test = np.array(X_test)[test_idxs]
+    y_test = np.array(y_test)[test_idxs]
 
     # standardize
     if standardize:
         scaler = StandardScaler()
         X_train = scaler.fit_transform(X_train)
-        X_valid = scaler.transform(X_valid)
+        X_test = scaler.transform(X_test)
     else:
         scaler = None
 
-    return X_train, y_train, X_valid, y_valid, scaler
+    return X_train, y_train, X_test, y_test, scaler
 
 
 ## GENERIC MODEL TRAINING
 
-def train_mlp(model, x_train, y_train, x_val, y_val, output_dir, batch_size=64,
+def train_mlp(model, x_train, y_train, output_dir, batch_size=64,
               num_epochs=100, patience=20, learning_rate=1e-4):
     """
     Train a MLP model with the given data.
@@ -265,8 +270,6 @@ def train_mlp(model, x_train, y_train, x_val, y_val, output_dir, batch_size=64,
     model
     x_train
     y_train
-    x_val
-    y_val
     output_dir
     batch_size
     num_epochs
@@ -306,7 +309,7 @@ def train_mlp(model, x_train, y_train, x_val, y_val, output_dir, batch_size=64,
     model.compile(Adam(lr=learning_rate), loss=loss, metrics=metrics)
     history = model.fit(
         x=x_train, y=y_train, batch_size=batch_size, epochs=num_epochs,
-        validation_data=(x_val, y_val), callbacks=cb, verbose=2)
+        callbacks=cb, verbose=2)
 
     return history
 
@@ -315,7 +318,7 @@ def train_mlp(model, x_train, y_train, x_val, y_val, output_dir, batch_size=64,
 
 def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="low", batch_size=64,
                   num_epochs=100, patience=20, learning_rate=1e-4, hidden_layer_size=128,
-                  l2_reg=1e-5, standardize=True, thresh_type="mean", timestamp=None):
+                  l2_reg=1e-5, standardize=True, timestamp=None):
     """
     Train and evaluate a framewise MLP model.
 
@@ -334,14 +337,13 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="lo
     hidden_layer_size
     l2_reg
     standardize
-    thresh_type
     timestamp
 
     Returns
     -------
 
     """
-    file_list, high_target_list, low_target_list, train_file_idxs, eval_file_idxs = load_sonyc_data(annotation_path)
+    file_list, high_target_list, low_target_list, train_file_idxs, test_file_idxs = load_sonyc_data(annotation_path)
 
     if label_mode == "low":
         target_list = low_target_list
@@ -354,10 +356,14 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="lo
 
     num_classes = len(labels)
 
-    embeddings = load_embeddings(file_list, emb_dir)
-    X_train, y_train, X_valid, y_valid, scaler = prepare_framewise_data(train_file_idxs, eval_file_idxs, embeddings,
-                                                                        target_list, standardize=standardize,
-                                                                        thresh_type=thresh_type)
+    embeddings, ignore_idxs = load_embeddings(file_list, emb_dir)
+
+    # Remove files that couldn't be loaded
+    train_file_idxs = [idx for idx in train_file_idxs if idx not in ignore_idxs]
+    test_file_idxs = [idx for idx in test_file_idxs if idx not in ignore_idxs]
+
+    X_train, y_train, X_test, y_test, scaler = prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
+                                                                        target_list, standardize=standardize)
 
     _, emb_size = X_train.shape
 
@@ -368,24 +374,29 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="lo
 
     results_dir = os.path.join(output_dir, exp_id, timestamp)
 
-    history = train_mlp(model, X_train, y_train, X_valid, y_valid, results_dir, batch_size=batch_size,
+    history = train_mlp(model, X_train, y_train, results_dir, batch_size=batch_size,
               num_epochs=num_epochs, patience=patience, learning_rate=learning_rate)
 
     results = {}
-    results['train'] = evaluate_framewise_model(embeddings, target_list, train_file_idxs, model, labels, scaler=scaler)
-    results['test'] = evaluate_framewise_model(embeddings, target_list, eval_file_idxs, model, labels, scaler=scaler)
-    results['history'] = history.history
+    results['train'] = predict_framewise(embeddings, target_list, train_file_idxs, model, labels, scaler=scaler)
+    results['test'] = predict_framewise(embeddings, target_list, test_file_idxs, model, labels, scaler=scaler)
+    results['train_history'] = history.history
 
     results_path = os.path.join(results_dir, "results.json")
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
 
+    for aggregation_type, y_pred in results['test'].items():
+        generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
+                             aggregation_type, label_mode)
+
 
 ## MODEL EVALUATION
 
-def evaluate_framewise_model(embeddings, target_list, test_file_idxs, model, labels, scaler=None, average='micro'):
+def predict_framewise(embeddings, target_list, test_file_idxs, model, labels, scaler=None):
     """
     Evaluate the output of a framewise classification model.
+
     Parameters
     ----------
     embeddings
@@ -394,12 +405,11 @@ def evaluate_framewise_model(embeddings, target_list, test_file_idxs, model, lab
     model
     labels
     scaler
+
     Returns
     -------
     results
     """
-    y_true = []
-
     y_pred_max = []
     y_pred_mean = []
     y_pred_softmax = []
@@ -412,72 +422,49 @@ def evaluate_framewise_model(embeddings, target_list, test_file_idxs, model, lab
         y_ = target_list[idx]
         pred_frame = model.predict(X_)
 
-        y_pred_max.append(pred_frame.max(axis=0))
-        y_pred_mean.append(pred_frame.mean(axis=0))
-        y_pred_softmax.append((softmax(pred_frame, axis=0) * pred_frame).sum(axis=0))
-
-        y_true.append(y_)
-
-    y_true = np.round(np.array(y_true))
-    y_pred_max_soft = np.array(y_pred_max)
-    y_pred_mean_soft = np.array(y_pred_mean)
-    y_pred_softmax_soft = np.array(y_pred_softmax)
-
-    y_pred_max = np.round(y_pred_max_soft)
-    y_pred_mean = np.round(y_pred_mean_soft)
-    y_pred_softmax = np.round(y_pred_softmax_soft)
+        y_pred_max.append(pred_frame.max(axis=0).tolist())
+        y_pred_mean.append(pred_frame.mean(axis=0).tolist())
+        y_pred_softmax.append(((softmax(pred_frame, axis=0) * pred_frame).sum(axis=0)).tolist())
 
 
     results = {
-        pool_method: {
-            'predictions': y_pred.astype(int).tolist(),
-            'file_idxs': np.array(test_file_idxs, dtype=int).tolist(),
-            'overall_metrics': {},
-            'class_metrics': {k: {} for k in labels}
-        }
-        for pool_method, y_pred in (
-            ('max', y_pred_max_soft), ('mean', y_pred_mean_soft), ('softmax', y_pred_softmax_soft))}
-
-    for pool_method, y_pred, y_pred_soft in [
-        ('max', y_pred_max, y_pred_max_soft),
-        ('mean', y_pred_mean, y_pred_mean_soft),
-        ('softmax', y_pred_softmax, y_pred_softmax_soft)]:
-
-
-        results[pool_method]["overall_metrics"]["accuracy"] = binary_accuracy_round_np(y_true, y_pred)
-        results[pool_method]["overall_metrics"]["precision"] = precision_score(y_true, y_pred, average=average)
-        results[pool_method]["overall_metrics"]["recall"] = recall_score(y_true, y_pred, average=average)
-        try:
-            results[pool_method]["overall_metrics"]["auroc"] = roc_auc_score(y_true, y_pred_soft, average=average)
-            results[pool_method]["overall_metrics"]["f1"] = f1_score(y_true, y_pred, average=average)
-            results[pool_method]["overall_metrics"]["map"] = average_precision_score(y_true, y_pred, average=average)
-        except:
-            results[pool_method]["overall_metrics"]["auroc"] = -1
-            results[pool_method]["overall_metrics"]["f1"] = -1
-            results[pool_method]["overall_metrics"]["map"] = -1
-
-        for idx, label in enumerate(labels):
-            y_true_cls = y_true[:,idx]
-            y_pred_cls = y_pred[:,idx]
-            y_pred_cls_soft = y_pred_soft[:,idx]
-
-            results[pool_method]["class_metrics"][label]["num_examples"] = y_true_cls.shape[0]
-            results[pool_method]["class_metrics"][label]["num_positives"] = int((y_true_cls.astype(int) == 1).sum())
-            results[pool_method]["class_metrics"][label]["accuracy"] = accuracy_score(y_true_cls, y_pred_cls)
-            results[pool_method]["class_metrics"][label]["precision"] = precision_score(y_true_cls, y_pred_cls)
-            results[pool_method]["class_metrics"][label]["recall"] = recall_score(y_true_cls, y_pred_cls)
-
-            if np.all(y_true_cls) or np.all(np.round(1 - y_true_cls)):
-                # If all one class, just set to -1
-                results[pool_method]["class_metrics"][label]["f1"] = -1
-                results[pool_method]["class_metrics"][label]["auroc"] = -1
-                results[pool_method]["class_metrics"][label]["map"] = -1
-            else:
-                results[pool_method]["class_metrics"][label]["f1"] = f1_score(y_true_cls, y_pred_cls)
-                results[pool_method]["class_metrics"][label]["auroc"] = roc_auc_score(y_true_cls, y_pred_cls_soft)
-                results[pool_method]["class_metrics"][label]["map"] = average_precision_score(y_true_cls, y_pred_cls)
+        'max': y_pred_max,
+        'mean': y_pred_mean,
+        'softmax': y_pred_softmax
+    }
 
     return results
+
+
+def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
+                         aggregation_type, label_mode):
+    output_path = os.path.join(results_dir, "output_{}.csv".format(aggregation_type))
+    test_file_list = [file_list[idx] for idx in test_file_idxs]
+
+    with open(output_path, 'w') as f:
+        csvwriter = csv.writer(f)
+
+        # Write fields
+        fields = ["audio_filename"] + sonyc_data.LOW_LEVEL_LABELS + sonyc_data.HIGH_LEVEL_LABELS
+        csvwriter.writerow(fields)
+
+        # Write results for each file to CSV
+        for filename, y, in zip(test_file_list, y_pred):
+            row = [filename]
+
+            if label_mode == "low":
+                # Add low level labels
+                row += list(y)
+                # Add placeholder values for high level
+                row += [-1 for _ in range(len(sonyc_data.HIGH_LEVEL_LABELS))]
+
+            else:
+                # Add placeholder values for low level
+                row += [-1 for _ in range(len(sonyc_data.LOW_LEVEL_LABELS))]
+                # Add high level labels
+                row += list(y)
+
+            csvwriter.writerow(row)
 
 
 if __name__ == '__main__':
@@ -497,8 +484,6 @@ if __name__ == '__main__':
     parser.add_argument("--num_classes", type=int, default=10)
     parser.add_argument("--label_mode", type=str, choices=["low", "high"],
                         default='low')
-    parser.add_argument("--thresh_type", type=str, default="mean",
-                        choices=["mean"] + ["percentile_{}".format(i) for i in range(1,100)])
 
     args = parser.parse_args()
 
