@@ -50,9 +50,9 @@ ALL_FINE_LEVEL_LABELS = [y for x in taxonomy.values() for y in x]
 ALL_COARSE_LEVEL_LABELS = list(taxonomy.keys())
 
 FINE_LEVEL_LABELS = [x for x in ALL_FINE_LEVEL_LABELS
-                    if "uncertain" not in x and "other" not in x]
+                    if "uncertain" not in x and "other" not in x and "sensorfault" not in x]
 COARSE_LEVEL_LABELS = [x for x in ALL_COARSE_LEVEL_LABELS
-                    if "uncertain" not in x and "other" not in x]
+                    if "uncertain" not in x and "other" not in x and "sensorfault" not in x]
 
 
 def load_sonyc_data(annotation_path):
