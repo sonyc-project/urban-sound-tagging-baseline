@@ -136,7 +136,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("annpath")
     parser.add_argument("audiodir")
-    parser.add_argument("embtype")
 
     parser.add_argument("outputfolder")
     parser.add_argument("expid")
