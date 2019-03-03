@@ -455,8 +455,16 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
             if label_mode == "low":
                 # Add low level labels
                 row += list(y)
-                # Add placeholder values for high level
-                row += [-1 for _ in range(len(sonyc_data.HIGH_LEVEL_LABELS))]
+                # Add high level labels corresponding to low level predictions
+                # Obtain by taking the maximum from the fine level labels
+                high_values = [0 for _ in range(len(sonyc_data.HIGH_LEVEL_LABELS))]
+                low_idx = 0
+                for high_idx, (high_label, low_label_list) in enumerate(sonyc_data.taxonomy.items()):
+                    for _ in range(len(low_label_list)):
+                        high_values[high_idx] = max(high_values[high_idx], y[low_idx])
+                        low_idx += 1
+
+                row += high_values
 
             else:
                 # Add placeholder values for low level
