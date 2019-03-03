@@ -6,13 +6,11 @@ import os
 import numpy as np
 
 import keras
-from keras.layers import Input, Dense, TimeDistributed
+from keras.layers import Input, Dense
 from keras.models import Model
 from keras import regularizers
 from keras.optimizers import Adam
 import keras.backend as K
-from autopool import AutoPool1D
-from skmultilearn.model_selection import IterativeStratification
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, average_precision_score, precision_score, recall_score
 
@@ -195,37 +193,6 @@ def construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=128, l2_reg
 
 ## DATA PREPARATION
 
-def get_val_test_file_split(file_list, eval_file_idxs, target_list, test_ratio=0.5):
-    """
-    Get train/validation/test split using iterative stratification, and optionally splitting by test sensors
-
-    Parameters
-    ----------
-    file_list
-    target_list
-    test_ratio
-
-    Returns
-    -------
-    valid_file_idxs
-    test_file_idxs
-
-    """
-    assert 0 < test_ratio < 1
-
-    val_ratio = 1.0 - test_ratio
-
-    kfold = IterativeStratification(n_splits=2, sample_distribution_per_fold=[val_ratio, test_ratio])
-    split_idxs = []
-    for _, train_idxs in kfold.split(np.ones((len(eval_file_idxs), 13)),
-                                     np.array([target_list[idx] for idx in eval_file_idxs])):
-        split_idxs.append(np.array([eval_file_idxs[idx] for idx in train_idxs]))
-
-    valid_file_idxs, test_file_idxs = split_idxs
-
-    return valid_file_idxs, test_file_idxs
-
-
 def prepare_framewise_data(train_file_idxs, valid_file_idxs, embeddings, target_list, standardize=True,
                            thresh_type="mean"):
     """
@@ -346,7 +313,7 @@ def train_mlp(model, x_train, y_train, x_val, y_val, output_dir, batch_size=64,
 
 ## MODEL TRAINING
 
-def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="low", batch_size=64, test_ratio=0.1,
+def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="low", batch_size=64,
                   num_epochs=100, patience=20, learning_rate=1e-4, hidden_layer_size=128,
                   l2_reg=1e-5, standardize=True, thresh_type="mean", timestamp=None):
     """
@@ -387,11 +354,8 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="lo
 
     num_classes = len(labels)
 
-    valid_file_idxs, test_file_idxs = get_val_test_file_split(file_list, eval_file_idxs, target_list,
-         test_ratio=test_ratio)
-
     embeddings = load_embeddings(file_list, emb_dir)
-    X_train, y_train, X_valid, y_valid, scaler = prepare_framewise_data(train_file_idxs, valid_file_idxs, embeddings,
+    X_train, y_train, X_valid, y_valid, scaler = prepare_framewise_data(train_file_idxs, eval_file_idxs, embeddings,
                                                                         target_list, standardize=standardize,
                                                                         thresh_type=thresh_type)
 
@@ -408,9 +372,8 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="lo
               num_epochs=num_epochs, patience=patience, learning_rate=learning_rate)
 
     results = {}
-    results['train'] = evaluate_framewise_model(embeddings, target_list, train_file_idxs, model, labels)
-    results['valid'] = evaluate_framewise_model(embeddings, target_list, valid_file_idxs, model, labels)
-    results['test'] = evaluate_framewise_model(embeddings, target_list, test_file_idxs, model, labels, scaler=scaler)
+    results['train'] = evaluate_framewise_model(embeddings, target_list, train_file_idxs, model, labels, scaler=scaler)
+    results['test'] = evaluate_framewise_model(embeddings, target_list, eval_file_idxs, model, labels, scaler=scaler)
     results['history'] = history.history
 
     results_path = os.path.join(results_dir, "results.json")
@@ -530,15 +493,12 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--num_epochs", type=int, default=100)
     parser.add_argument("--patience", type=int, default=20)
-    parser.add_argument("--test_ratio", type=float, default=0.5)
     parser.add_argument("--no_standardize", action='store_true')
     parser.add_argument("--num_classes", type=int, default=10)
     parser.add_argument("--label_mode", type=str, choices=["low", "high"],
                         default='low')
     parser.add_argument("--thresh_type", type=str, default="mean",
                         choices=["mean"] + ["percentile_{}".format(i) for i in range(1,100)])
-    parser.add_argument("--target_mode", type=str, choices=["framewise"],
-                        default='framewise')
 
     args = parser.parse_args()
 
@@ -556,7 +516,6 @@ if __name__ == '__main__':
                     args.exp_id,
                     label_mode=args.label_mode,
                     batch_size=args.batch_size,
-                    test_ratio=args.test_ratio,
                     num_epochs=args.num_epochs,
                     patience=args.patience,
                     learning_rate=args.learning_rate,
