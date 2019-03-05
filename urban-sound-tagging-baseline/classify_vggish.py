@@ -16,26 +16,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, average_precision_score, precision_score, recall_score
 
 import sonyc_data
-from sonyc_data import load_sonyc_data
 
 
 ## HELPERS
-
-def get_sensor_id(file_id):
-    """
-    Get sensor id from a SONYC file ID
-
-    Parameters
-    ----------
-    file_id
-
-    Returns
-    -------
-    sensor_id
-
-    """
-    return file_id.rsplit(' ', 1)[-1].split('_')[0]
-
 
 def load_embeddings(file_list, emb_dir):
     """
@@ -226,6 +209,9 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_l
     y_train = []
     for idx in train_file_idxs:
         # Skip any "other" or "unknown" examples
+        # TODO: Account for this in the loss function. We still want to train
+        # on these examples if there are complete annotations for other coarse
+        # annotations
         if not np.any(target_list[idx]):
             continue
 
@@ -320,7 +306,7 @@ def train_mlp(model, x_train, y_train, output_dir, batch_size=64,
 
 ## MODEL TRAINING
 
-def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="fine", batch_size=64,
+def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine", batch_size=64,
                   num_epochs=100, patience=20, learning_rate=1e-4, hidden_layer_size=128,
                   l2_reg=1e-5, standardize=True, timestamp=None):
     """
@@ -328,7 +314,7 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="fi
 
     Parameters
     ----------
-    annotation_path
+    dataset_dir
     emb_dir
     output_dir
     exp_id
@@ -347,14 +333,26 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="fi
     -------
 
     """
-    file_list, coarse_target_list, fine_target_list, train_file_idxs, test_file_idxs = load_sonyc_data(annotation_path)
+    annotation_path = os.path.join(dataset_dir, "annotations.csv")
+    annotation_data = sonyc_data.load_ust_data(annotation_path)
+    file_list = list(annotation_data.keys())
+    taxonomy = sonyc_data.get_taxonomy(annotation_data)
+
+    fine_target_labels = [x for fine_list in taxonomy.values()
+                          for x in fine_list
+                          if 'X' not in x]
+    coarse_target_labels = list(taxonomy.keys())
+
+    fine_target_list = sonyc_data.get_file_targets(annotation_data, fine_target_labels)
+    coarse_target_list = sonyc_data.get_file_targets(annotation_data, coarse_target_labels)
+    train_file_idxs, test_file_idxs = sonyc_data.get_subset_split(annotation_data)
 
     if label_mode == "fine":
         target_list = fine_target_list
-        labels = sonyc_data.FINE_LEVEL_LABELS
+        labels = fine_target_labels
     elif label_mode == "coarse":
         target_list = coarse_target_list
-        labels = sonyc_data.COARSE_LEVEL_LABELS
+        labels = coarse_target_labels
     else:
         raise ValueError("Invalid label mode: {}".format(label_mode))
 
@@ -392,7 +390,8 @@ def train_framewise(annotation_path, emb_dir, output_dir, exp_id, label_mode="fi
 
     for aggregation_type, y_pred in results['test'].items():
         generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
-                             aggregation_type, label_mode)
+                             aggregation_type, label_mode, taxonomy,
+                             fine_target_labels, coarse_target_labels)
 
 
 ## MODEL EVALUATION
@@ -441,7 +440,8 @@ def predict_framewise(embeddings, target_list, test_file_idxs, model, labels, sc
 
 
 def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
-                         aggregation_type, label_mode):
+                         aggregation_type, label_mode, taxonomy,
+                         fine_target_labels, coarse_target_labels):
     output_path = os.path.join(results_dir, "output_{}.csv".format(aggregation_type))
     test_file_list = [file_list[idx] for idx in test_file_idxs]
 
@@ -449,9 +449,7 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
         csvwriter = csv.writer(f)
 
         # Write fields
-        fields = ["audio_filename"]
-        fields += ["fine_" + x for x in sonyc_data.FINE_LEVEL_LABELS]
-        fields += ["coarse_" + x for x in sonyc_data.COARSE_LEVEL_LABELS]
+        fields = ["audio_filename"] + fine_target_labels + coarse_target_labels
         csvwriter.writerow(fields)
 
         # Write results for each file to CSV
@@ -463,13 +461,13 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
                 row += list(y)
                 # Add coarse level labels corresponding to fine level predictions
                 # Obtain by taking the maximum from the fine level labels
-                coarse_values = [0 for _ in range(len(sonyc_data.COARSE_LEVEL_LABELS))]
+                coarse_values = [0 for _ in range(len(coarse_target_labels))]
                 coarse_idx = 0
                 fine_idx = 0
-                for coarse_label in sonyc_data.COARSE_LEVEL_LABELS:
-                    fine_label_list = sonyc_data.taxonomy[coarse_label]
+                for coarse_label in coarse_target_labels:
+                    fine_label_list = taxonomy[coarse_label]
                     for fine_label in fine_label_list:
-                        if fine_label not in sonyc_data.FINE_LEVEL_LABELS:
+                        if fine_label not in fine_target_labels:
                             continue
                         coarse_values[coarse_idx] = max(coarse_values[coarse_idx], y[fine_idx])
                         fine_idx += 1
@@ -479,7 +477,7 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
 
             else:
                 # Add placeholder values for fine level
-                row += [-1 for _ in range(len(sonyc_data.FINE_LEVEL_LABELS))]
+                row += [-1 for _ in range(len(fine_target_labels))]
                 # Add coarse level labels
                 row += list(y)
 
@@ -488,7 +486,7 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("annotation_path")
+    parser.add_argument("dataset_dir")
     parser.add_argument("emb_dir", type=str)
     parser.add_argument("output_dir", type=str)
     parser.add_argument("exp_id", type=str)
@@ -514,7 +512,7 @@ if __name__ == '__main__':
     with open(kwarg_file, 'w') as f:
         json.dump(vars(args), f, indent=2)
 
-    train_framewise(args.annotation_path,
+    train_framewise(args.dataset_dir,
                     args.emb_dir,
                     args.output_dir,
                     args.exp_id,

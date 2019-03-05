@@ -10,7 +10,7 @@ from vggish import vggish_input
 from vggish import vggish_postprocess
 from vggish import vggish_slim
 
-from sonyc_data import load_sonyc_data
+from sonyc_data import load_ust_data
 
 
 def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='vggish/input_features',
@@ -87,7 +87,7 @@ def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='v
         pass
 
 
-def extract_embeddings_vggish(annotation_path, audio_dir, output_dir, exp_id, frame_duration=0.96, hop_duration=0.96,
+def extract_embeddings_vggish(dataset_dir, output_dir, exp_id, frame_duration=0.96, hop_duration=0.96,
                               progress=True, vggish_resource_dir='/home/jtc440/dev/l3embedding/resources/vggish',
                               vggish_embedding_size=128):
     """
@@ -95,8 +95,7 @@ def extract_embeddings_vggish(annotation_path, audio_dir, output_dir, exp_id, fr
 
     Parameters
     ----------
-    annotation_path
-    audio_dir
+    dataset_dir
     output_dir
     exp_id
     frame_duration
@@ -110,7 +109,10 @@ def extract_embeddings_vggish(annotation_path, audio_dir, output_dir, exp_id, fr
 
     """
 
-    file_list = load_sonyc_data(annotation_path)[0]
+    annotation_path = os.path.join(dataset_dir, "annotations.csv")
+    annotation_data = load_ust_data(annotation_path)
+    file_list = list(annotation_data.keys())
+    split_str_list = [ann_list[0]['split'] for ann_list in annotation_data.values()]
 
     extract_vggish_embedding = make_extract_vggish_embedding(frame_duration, hop_duration,
         input_op_name='vggish/input_features', output_op_name='vggish/embedding',
@@ -124,8 +126,8 @@ def extract_embeddings_vggish(annotation_path, audio_dir, output_dir, exp_id, fr
     if progress:
         file_list = tqdm(file_list)
 
-    for filename in file_list:
-        audio_path = os.path.join(audio_dir, filename)
+    for filename, split_str in zip(file_list, split_str_list):
+        audio_path = os.path.join(dataset_dir, split_str, filename)
         emb_path = os.path.join(out_dir, os.path.splitext(filename)[0] + '.npy.gz')
         extract_vggish_embedding.send((audio_path, emb_path))
 
@@ -134,9 +136,7 @@ def extract_embeddings_vggish(annotation_path, audio_dir, output_dir, exp_id, fr
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("annpath")
-    parser.add_argument("audiodir")
-
+    parser.add_argument("datadir")
     parser.add_argument("outputfolder")
     parser.add_argument("expid")
 
@@ -149,8 +149,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    extract_embeddings_vggish(annotation_path=args.annpath,
-                              audio_dir=args.audiodir,
+    extract_embeddings_vggish(dataset_dir=args.datadir,
                               output_dir=args.outputfolder,
                               exp_id=args.expid,
                               vggish_resource_dir=args.vggish_resource_dir,
