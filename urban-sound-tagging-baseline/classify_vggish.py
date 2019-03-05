@@ -109,41 +109,9 @@ def binary_accuracy_round(y_true, y_pred):
     accuracy
 
     """
+    # TODO: Update for our modified accuracy metric
     return K.mean(K.equal(K.round(y_true), K.round(y_pred)), axis=-1)
 
-
-def binary_accuracy_round_np(y_true, y_pred):
-    """
-    Multi-label average accuracy, using 0.5 as the detection threshold. For use with numpy.
-
-    Parameters
-    ----------
-    y_true
-    y_pred
-
-    Returns
-    -------
-    accuracy
-
-    """
-    return np.mean(np.equal(np.round(y_true), np.round(y_pred)))
-
-
-def classwise_binary_accuracy_round_np(y_true, y_pred):
-    """
-    Multi-label average accuracy per class, using 0.5 as the detection threshold. For use with numpy.
-
-    Parameters
-    ----------
-    y_true
-    y_pred
-
-    Returns
-    -------
-    accuracy
-
-    """
-    return np.mean(np.equal(np.round(y_true), np.round(y_pred)), axis=0)
 
 
 ## MODEL CONSTRUCTION
@@ -250,7 +218,7 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_l
 
 ## GENERIC MODEL TRAINING
 
-def train_mlp(model, x_train, y_train, output_dir, batch_size=64,
+def train_mlp(model, x_train, y_train, output_dir, loss=None, batch_size=64,
               num_epochs=100, patience=20, learning_rate=1e-4):
     """
     Train a MLP model with the given data.
@@ -272,8 +240,10 @@ def train_mlp(model, x_train, y_train, output_dir, batch_size=64,
 
     """
 
-    loss = 'binary_crossentropy'
-    metrics = [binary_accuracy_round]
+    if loss is None:
+        loss = 'binary_crossentropy'
+    # TODO: Update for our modified accuracy metric
+    metrics = []
     #set_random_seed(random_state)
 
     os.makedirs(output_dir, exist_ok=True)
@@ -335,9 +305,12 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
     fine_target_labels = [x for fine_list in taxonomy.values()
                           for x in fine_list
                           if 'X' not in x]
+    full_fine_target_labels = [x for fine_list in taxonomy.values()
+                                     for x in fine_list]
     coarse_target_labels = list(taxonomy.keys())
 
-    fine_target_list = sonyc_data.get_file_targets(annotation_data, fine_target_labels)
+    # For fine, we include incomplete labels in targets for computing the loss
+    fine_target_list = sonyc_data.get_file_targets(annotation_data, full_fine_target_labels)
     coarse_target_list = sonyc_data.get_file_targets(annotation_data, coarse_target_labels)
     train_file_idxs, test_file_idxs = sonyc_data.get_subset_split(annotation_data)
 
@@ -370,12 +343,66 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
 
     results_dir = os.path.join(output_dir, exp_id, timestamp)
 
-    history = train_mlp(model, X_train, y_train, results_dir, batch_size=batch_size,
-              num_epochs=num_epochs, patience=patience, learning_rate=learning_rate)
+    if label_mode == "fine":
+        full_coarse_to_fine_terminal_idxs = np.cumsum([len(fine_list) for fine_list in taxonomy.values()])
+        incomplete_fine_subidxs = [len(fine_list) - 1 if 'X' in fine_list[-1] else None for fine_list in taxonomy.values()]
+        coarse_to_fine_end_idxs = np.cumsum([len([x for x in fine_list if 'X' not in x])
+                                                  for fine_list in taxonomy.values()])
+
+        def masked_loss(y_true, y_pred):
+            loss = None
+            for coarse_idx in range(len(full_coarse_to_fine_idxs)):
+                true_terminal_idx = full_coarse_to_fine_terminal_idxs[coarse_idx]
+                true_incomplete_subidx = incomplete_fine_subidxs[coarse_idx]
+                pred_end_idx = coarse_to_fine_end_idxs[coarse_idx]
+
+                if coarse_idx != 0:
+                    true_start_idx = full_coarse_to_fine_idxs[coarse_idx-1]
+                    pred_start_idx = coarse_to_fine_idxs[coarse_idx-1]
+                else:
+                    true_start_idx = 0
+                    pred_start_idx = 0
+
+                if true_incomplete_subidx is None:
+                    true_end_idx = true_terminal_idx
+
+                    sub_true = y_true[:, true_start_idx:true_end_idx]
+                    sub_pred = y_pred[:, pred_start_idx:pred_end_idx]
+
+                else:
+                    # Don't include incomplete label
+                    true_end_idx = true_terminal_idx - 1
+                    true_incomplete_idx = true_incomplete_subidx + true_start_idx
+                    assert true_end_idx - true_start_idx == pred_end_idx - pred_start_idx
+                    assert true_incomplete_idx == true_end_idx
+
+                    # 1 if not incomplete, 0 if incomplete
+                    mask = K.expand_dims(1 - y_true[:, true_incomplete_idx])
+
+                    # Mask the target and predictions. If the mask is 0,
+                    # all entries will be 0 and the BCE will be 0.
+                    # This has the effect of masking the BCE for each fine
+                    # label within a coarse label if an incomplete label exists
+                    sub_true = y_true[:, true_start_idx:true_end_idx] * mask
+                    sub_pred = y_pred[:, pred_start_idx:pred_end_idx] * mask
+
+                if loss is not None:
+                    loss += K.sum(K.binary_crossentropy(sub_true, sub_pred))
+                else:
+                    loss = K.sum(K.binary_crossentropy(sub_true, sub_pred))
+
+            return loss
+        loss_func = masked_loss
+    else:
+        loss_func = None
+
+    history = train_mlp(model, X_train, y_train, results_dir, loss=loss_func,
+                        batch_size=batch_size, num_epochs=num_epochs,
+                        patience=patience, learning_rate=learning_rate)
 
     results = {}
-    results['train'] = predict_framewise(embeddings, target_list, train_file_idxs, model, labels, scaler=scaler)
-    results['test'] = predict_framewise(embeddings, target_list, test_file_idxs, model, labels, scaler=scaler)
+    results['train'] = predict_framewise(embeddings, train_file_idxs, model, scaler=scaler)
+    results['test'] = predict_framewise(embeddings, test_file_idxs, model, scaler=scaler)
     results['train_history'] = history.history
 
     results_path = os.path.join(results_dir, "results.json")
@@ -390,17 +417,15 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
 
 ## MODEL EVALUATION
 
-def predict_framewise(embeddings, target_list, test_file_idxs, model, labels, scaler=None):
+def predict_framewise(embeddings, test_file_idxs, model, scaler=None):
     """
     Evaluate the output of a framewise classification model.
 
     Parameters
     ----------
     embeddings
-    target_list
     test_file_idxs
     model
-    labels
     scaler
 
     Returns
@@ -416,7 +441,6 @@ def predict_framewise(embeddings, target_list, test_file_idxs, model, labels, sc
             X_ = np.array(embeddings[idx])
         else:
             X_ = np.array(scaler.transform(embeddings[idx]))
-        y_ = target_list[idx]
         pred_frame = model.predict(X_)
 
         y_pred_max.append(pred_frame.max(axis=0).tolist())
