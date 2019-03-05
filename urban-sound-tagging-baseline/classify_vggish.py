@@ -274,7 +274,6 @@ def train_mlp(model, x_train, y_train, output_dir, batch_size=64,
 
     loss = 'binary_crossentropy'
     metrics = [binary_accuracy_round]
-    monitor = 'val_loss'
     #set_random_seed(random_state)
 
     os.makedirs(output_dir, exist_ok=True)
@@ -284,12 +283,7 @@ def train_mlp(model, x_train, y_train, output_dir, batch_size=64,
     # checkpoint
     model_weight_file = os.path.join(output_dir, 'model_best.h5')
     cb.append(keras.callbacks.ModelCheckpoint(model_weight_file,
-                                              save_weights_only=True,
-                                              save_best_only=True,
-                                              monitor=monitor))
-    # early stopping
-    cb.append(keras.callbacks.EarlyStopping(monitor='val_loss',
-                                            patience=patience))
+                                              save_weights_only=True))
     # monitor losses
     history_csv_file = os.path.join(output_dir, 'history.csv')
     cb.append(keras.callbacks.CSVLogger(history_csv_file, append=True,
