@@ -136,7 +136,16 @@ def get_target(file_anns, labels):
     """
     target = []
     for label in labels:
-        count = sum([ann[label + '_presence'] for ann in file_anns])
+        count = 0
+
+        for ann in file_anns:
+            if ann['annotator_id'] == 0:
+                # If we have a validated annotation, just use that
+                count = ann[label + '_presence']
+                break
+            else:
+                count += ann[label + '_presence']
+
         if count > 0:
             target.append(1.0)
         else:
