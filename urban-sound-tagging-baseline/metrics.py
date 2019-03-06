@@ -6,8 +6,35 @@ from sklearn.metrics import confusion_matrix
 def evaluate_fine(
         Y_true, Y_pred, is_true_incomplete, is_pred_incomplete):
     """
-    Counts true positives (TP), false positives (FP), and false negatives (FN)
-    in the predictions of a system, for a given coarse category.
+    Counts overall numbers of true positives (TP), false positives (FP),
+    and false negatives (FN) in the predictions of a system, for a number K
+    of fine-level classes within a given coarse category, in a dataset of N
+    different samples. In addition to the K so-called "complete" tags (i.e.
+    with a determinate fine-level category as well as a determinate
+    coarse-level category), we consider the potential presence of an "incomplete"
+    tag, i.e. denoting the presence of a class with a determinate coarse-level
+    category yet no determinate fine-level category. This incomplete tag
+    be present in either the prediction or the ground truth.
+
+    Our method for evaluating a multilabel classifier on potentially incomplete
+    knowledge of the ground truth consists of two parts, which are ultimately
+    aggregated into a single count.
+
+    For the samples with complete knowledge of both ground truth (Part I in the
+    code below), we simply apply classwise boolean logic to compute TP, FP, and
+    FN independently for every fine-level tag, and finally aggregate across
+    all tags.
+
+    However, for the samples with incomplete knowledge of the ground truth
+    (Part II in the code below), we perform a "coarsening" of the prediction by
+    apply a disjunction on the fine-level complete tags as well as the
+    coarse incomplete tag. If that coarsened prediction is positive, the sample
+    produces a true positive; otherwise, it produces a false negative.
+
+    Samples which contain the incomplete tag in the prediction but not the
+    ground truth overlap Parts I and II. In this case, we sum the zero, one,
+    or multiple false alarm(s) from Part I with the one false alarm from Part II
+    to produce a final number of false positives FP.
 
     Parameters
     ----------
@@ -46,7 +73,7 @@ def evaluate_fine(
         Number of false negatives.
     """
 
-    ## PART I. SAMPLES WITH COMPLETE GROUND TRUTH
+    ## PART I. SAMPLES WITH COMPLETE GROUND TRUTH AND COMPLETE PREDICTION
     # Negate the true_incomplete boolean and replicate it K times, where
     # K is the number of fine tags.
     # For each sample and fine tag, this mask is equal to 0 if the
@@ -86,7 +113,7 @@ def evaluate_fine(
         (Y_true, np.logical_not(Y_pred), is_true_complete))
 
 
-    ## PART II. SAMPLES WITH INCOMPLETE GROUND TRUTH.
+    ## PART II. SAMPLES WITH INCOMPLETE GROUND TRUTH OR INCOMPLETE PREDICTION.
     # Compute a vector of "coarsened predictions".
     # For each sample, the coarsened prediction is equal to 1 if any of the
     # complete fine tags is predicted as present, or if the incomplete fine
@@ -106,6 +133,15 @@ def evaluate_fine(
     # The result is a (N,) vector.
     is_TP_incomplete = np.logical_and((is_true_incomplete, y_pred_reduced))
 
+    # Compute false positives for samples with incomplete ground truth.
+    # For each sample n, is_FP_incomplete is equal to 1
+    # if and only if the following two conditions are met:
+    # (i)   the incomplete fine tag is absent in the ground truth
+    # (ii)  the prediction of sample n contains the incomplete fine tag
+    # The result is a (N,) vector.
+    is_FP_incomplete = np.logical_and(
+        (np.logical_not(is_true_incomplete), y_pred_incomplete))
+
     # Compute false negatives for samples with incomplete ground truth.
     # For each sample n, is_FN_incomplete is equal to 1
     # if and only if the following two conditions are met:
@@ -115,7 +151,8 @@ def evaluate_fine(
     is_FN_incomplete = np.logical_and(
         (is_true_incomplete, np.logical_not(y_pred_reduced)))
 
-    ## PART III. AGGREGATE EVALUATION OF ALL SAMPLES
+
+    ## PART IV. AGGREGATE EVALUATION OF ALL SAMPLES
     # The following three sums are performed over NxK booleans,
     # implicitly converted as integers 0 (False) and 1 (True).
     TP_complete = sum(is_TP_complete)
