@@ -333,10 +333,17 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
     return df_dict
 
 
-def macro_average_auprc(df_dict):
+def micro_averaged_auprc(df_dict):
+    """
+    Compute micro-averaged area under the precision-recall curve (AUPRC)
+    from a dictionary of class-wise DataFrames obtained via `evaluate`.
+    """
+
+
+def macro_averaged_auprc(df_dict):
     """
     Compute macro-averaged area under the precision-recall curve (AUPRC)
-    from a dictionary of class-wise DataFrames obtaines via evaluate()
+    from a dictionary of class-wise DataFrames obtaines via `evaluate`. 
     """
     auprcs = []
     for coarse_id in df_dict.keys():
