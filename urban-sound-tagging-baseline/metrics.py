@@ -398,6 +398,9 @@ def parse_ground_truth(annotation_path, yaml_path):
 
 
 def precision_recall_curves(prediction_path, annotation_path, yaml_path, mode):
+    # Set minimum threshold.
+    min_threshold = 0.01
+
     # Create dictionary to parse tags
     with open(yaml_path, 'r') as stream:
         try:
@@ -414,10 +417,14 @@ def precision_recall_curves(prediction_path, annotation_path, yaml_path, mode):
     elif mode == "coarse":
         pred_df = parse_coarse_prediction(prediction_path)
 
+    # Initialize dictionary of DataFrames.
+    df_dict = {}
+
     # Loop over coarse categories.
     for coarse_id in yaml_dict["coarse"]:
         # List columns corresponding to that category
-        columns = [x for x in pred_df.columns if x.startswith(str(coarse_id))]
+        columns = [column for column in pred_df.columns
+            if column.startswith(str(coarse_id)) and not column.endswith("X")]
 
         # Sort columns in alphanumeric order.
         columns.sort()
@@ -434,9 +441,57 @@ def precision_recall_curves(prediction_path, annotation_path, yaml_path, mode):
         # Sort in place.
         thresholds.sort()
 
+        # Skip very low values of the threshold.
+        # This is to speed up the computation of the precision-recall curve
+        # in the low-precision regime.
+        thresholds = thresholds[np.searchsorted(thresholds, min_threshold):]
+
+        # Restrict to unique elements.
+        thresholds = np.unique(thresholds)
+
+        # Count number of thresholds.
+        n_thresholds = len(thresholds)
+        TPs, FPs, FNs = (np.zeros((n_thresholds,).astype('int')),) * 3
+
         # FINE MODE.
         if mode == "fine":
+            incomplete_tag = str(coarse_id) + "-X"
+
+            # Load ground truth as numpy array.
+            Y_true = restricted_gt_df.values
+            y_true_predicted = restricted_gt_df[incomplete_tag].values
+
             # Loop over thresholds in a decreasing order.
-            for threshold in reversed(thresholds):
+            for i, threshold in enumerate(reversed(thresholds)):
+                # Threshold prediction for complete tag.
+                Y_pred = restricted_pred_df.values > threshold
+
+                # Threshold prediction for incomplete tag.
+                y_pred_incomplete =\
+                    restricted_pred_df[incomplete_tag].values > threshold
+
+                # Evaluate.
+                TPs[i], FPs[i], FNs[i] = evaluate_fine(
+                    Y_true, Y_pred, is_true_incomplete, is_pred_incomplete)
+
+        elif mode == "coarse":
+            # Load ground truth as numpy array.
+            Y_true = restricted_gt_df.values
+
+            # Loop over thresholds in a decreasing order.
+            for i, threshold in enumerate(reversed(thresholds)):
                 # Threshold prediction.
-                Y_pred = restricted_df.values
+                Y_pred = restricted_pred_df.values > threshold
+
+                # Evaluate.
+                TPs[i], FPs[i], FNs[i] = evaluate_coarse(Y_true, Y_pred)
+
+        # Build DataFrame from columns.
+        eval_df = pd.DataFrame({
+            "threshold": thresholds, "TP": TPs, "FP": FPs, "FN": FNs})
+
+        # Store DataFrame in the dictionary.
+        df_dict[coarse_id] = eval_df
+
+    # Return dictionary.
+    return df_dict
