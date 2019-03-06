@@ -4,7 +4,130 @@ from sklearn.metrics import confusion_matrix
 import yaml
 
 
-def evaluate_fine(
+def evaluate(prediction_path, annotation_path, yaml_path, mode):
+    # Set minimum threshold.
+    min_threshold = 0.01
+
+    # Create dictionary to parse tags
+    with open(yaml_path, 'r') as stream:
+        try:
+            yaml_dict = yaml.load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+
+    # Parse ground truth.
+    gf_df = parse_ground_truth(annotation_path, yaml_path)
+
+    # Parse predictions.
+    if mode == "fine":
+        pred_df = parse_fine_prediction(prediction_path)
+    elif mode == "coarse":
+        pred_df = parse_coarse_prediction(prediction_path)
+
+    # Initialize dictionary of DataFrames.
+    df_dict = {}
+
+    # Loop over coarse categories.
+    for coarse_id in yaml_dict["coarse"]:
+        # List columns corresponding to that category
+        columns = [column for column in pred_df.columns
+            if column.startswith(str(coarse_id)) and not column.endswith("X")]
+
+        # Sort columns in alphanumeric order.
+        columns.sort()
+
+        # Restrict prediction to columns of interest.
+        restricted_pred_df = pred_df[columns]
+
+        # Restrict ground truth to columns of interest.
+        restricted_gt_df = gt_df[columns]
+
+        # Aggregate all prediction values into a "raveled" vector.
+        thresholds = np.ravel(restricted_pred_df.values)
+
+        # Sort in place.
+        thresholds.sort()
+
+        # Skip very low values of the threshold.
+        # This is to speed up the computation of the precision-recall curve
+        # in the low-precision regime.
+        thresholds = thresholds[np.searchsorted(thresholds, min_threshold):]
+
+        # Restrict to unique elements.
+        thresholds = np.unique(thresholds)
+
+        # Count number of thresholds.
+        n_thresholds = len(thresholds)
+        TPs, FPs, FNs = (np.zeros((n_thresholds,).astype('int')),) * 3
+
+        # FINE MODE.
+        if mode == "fine":
+            incomplete_tag = str(coarse_id) + "-X"
+
+            # Load ground truth as numpy array.
+            Y_true = restricted_gt_df.values
+            y_true_predicted = restricted_gt_df[incomplete_tag].values
+
+            # Loop over thresholds in a decreasing order.
+            for i, threshold in enumerate(reversed(thresholds)):
+                # Threshold prediction for complete tag.
+                Y_pred = restricted_pred_df.values > threshold
+
+                # Threshold prediction for incomplete tag.
+                y_pred_incomplete =\
+                    restricted_pred_df[incomplete_tag].values > threshold
+
+                # Evaluate.
+                TPs[i], FPs[i], FNs[i] = confusion_matrix_fine(
+                    Y_true, Y_pred, is_true_incomplete, is_pred_incomplete)
+
+        # COARSE MODE.
+        elif mode == "coarse":
+            # Load ground truth as numpy array.
+            Y_true = restricted_gt_df.values
+
+            # Loop over thresholds in a decreasing order.
+            for i, threshold in enumerate(reversed(thresholds)):
+                # Threshold prediction.
+                Y_pred = restricted_pred_df.values > threshold
+
+                # Evaluate.
+                TPs[i], FPs[i], FNs[i] = confusion_matrix_coarse(Y_true, Y_pred)
+
+        # Build DataFrame from columns.
+        eval_df = pd.DataFrame({
+            "threshold": thresholds, "TP": TPs, "FP": FPs, "FN": FNs})
+
+        # Add columns for precision, recall, and F1-score.
+        # NB: we take the maximum between TPs+FPs and mu=0.5 in the
+        # denominator in order to avoid division by zero.
+        # This only ever happens if TP+FP < 1, which
+        # implies TP = 0 (because TP and FP are nonnegative integers),
+        # and therefore a numerator of exactly zero. Therefore, any additive
+        # offset mu would do as long as 0 < mu < 1. Choosing mu = 0.5 is
+        # purely arbitrary and has no effect on the outcome (i.e. zero).
+        mu = 0.5
+        eval_df["P"] = TPs / np.maximum(TPs + FPs, 0.5)
+
+        # Likewise for recalls, although this numerical safeguard is probably
+        # less necessary given that TP+FN=0 implies that there are zero
+        # positives in the ground truth, which is unlikely but no unheard of.
+        eval_df["R"] = TPs / np.maximum(TPs + FNs, mu)
+
+        # Compute F1-scores.
+        # NB: we use the harmonic mean formula (1/F = 1/P + 1/R) rather than
+        # the more common F = (2*P*R)/(P+R) in order circumvent the edge case
+        # where both P and R are equal to 0 (i.e. TP = 0).
+        eval_df["F"] = 1 / (1/eval_df["P"] + 1/eval_df["R"])
+
+        # Store DataFrame in the dictionary.
+        df_dict[coarse_id] = eval_df
+
+    # Return dictionary.
+    return df_dict
+
+
+def confusion_matrix_fine(
         Y_true, Y_pred, is_true_incomplete, is_pred_incomplete):
     """
     Counts overall numbers of true positives (TP), false positives (FP),
@@ -174,7 +297,7 @@ def evaluate_fine(
     return TP, FP, FN
 
 
-def evaluate_coarse(y_true, y_pred):
+def confusion_matrix_coarse(y_true, y_pred):
     """
     Counts overall numbers of true positives (TP), false positives (FP),
     and false negatives (FN) in the predictions of a system, for a single
@@ -395,103 +518,3 @@ def parse_ground_truth(annotation_path, yaml_path):
         # tag 7-X.
         if incomplete_tag not in gt_df.columns:
             gt_df[incomplete_tag] = np.zeros((n_samples,)).astype('int')
-
-
-def precision_recall_curves(prediction_path, annotation_path, yaml_path, mode):
-    # Set minimum threshold.
-    min_threshold = 0.01
-
-    # Create dictionary to parse tags
-    with open(yaml_path, 'r') as stream:
-        try:
-            yaml_dict = yaml.load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
-
-    # Parse ground truth.
-    gf_df = parse_ground_truth(annotation_path, yaml_path)
-
-    # Parse predictions.
-    if mode == "fine":
-        pred_df = parse_fine_prediction(prediction_path)
-    elif mode == "coarse":
-        pred_df = parse_coarse_prediction(prediction_path)
-
-    # Initialize dictionary of DataFrames.
-    df_dict = {}
-
-    # Loop over coarse categories.
-    for coarse_id in yaml_dict["coarse"]:
-        # List columns corresponding to that category
-        columns = [column for column in pred_df.columns
-            if column.startswith(str(coarse_id)) and not column.endswith("X")]
-
-        # Sort columns in alphanumeric order.
-        columns.sort()
-
-        # Restrict prediction to columns of interest.
-        restricted_pred_df = pred_df[columns]
-
-        # Restrict ground truth to columns of interest.
-        restricted_gt_df = gt_df[columns]
-
-        # Aggregate all prediction values into a "raveled" vector.
-        thresholds = np.ravel(restricted_pred_df.values)
-
-        # Sort in place.
-        thresholds.sort()
-
-        # Skip very low values of the threshold.
-        # This is to speed up the computation of the precision-recall curve
-        # in the low-precision regime.
-        thresholds = thresholds[np.searchsorted(thresholds, min_threshold):]
-
-        # Restrict to unique elements.
-        thresholds = np.unique(thresholds)
-
-        # Count number of thresholds.
-        n_thresholds = len(thresholds)
-        TPs, FPs, FNs = (np.zeros((n_thresholds,).astype('int')),) * 3
-
-        # FINE MODE.
-        if mode == "fine":
-            incomplete_tag = str(coarse_id) + "-X"
-
-            # Load ground truth as numpy array.
-            Y_true = restricted_gt_df.values
-            y_true_predicted = restricted_gt_df[incomplete_tag].values
-
-            # Loop over thresholds in a decreasing order.
-            for i, threshold in enumerate(reversed(thresholds)):
-                # Threshold prediction for complete tag.
-                Y_pred = restricted_pred_df.values > threshold
-
-                # Threshold prediction for incomplete tag.
-                y_pred_incomplete =\
-                    restricted_pred_df[incomplete_tag].values > threshold
-
-                # Evaluate.
-                TPs[i], FPs[i], FNs[i] = evaluate_fine(
-                    Y_true, Y_pred, is_true_incomplete, is_pred_incomplete)
-
-        elif mode == "coarse":
-            # Load ground truth as numpy array.
-            Y_true = restricted_gt_df.values
-
-            # Loop over thresholds in a decreasing order.
-            for i, threshold in enumerate(reversed(thresholds)):
-                # Threshold prediction.
-                Y_pred = restricted_pred_df.values > threshold
-
-                # Evaluate.
-                TPs[i], FPs[i], FNs[i] = evaluate_coarse(Y_true, Y_pred)
-
-        # Build DataFrame from columns.
-        eval_df = pd.DataFrame({
-            "threshold": thresholds, "TP": TPs, "FP": FPs, "FN": FNs})
-
-        # Store DataFrame in the dictionary.
-        df_dict[coarse_id] = eval_df
-
-    # Return dictionary.
-    return df_dict
