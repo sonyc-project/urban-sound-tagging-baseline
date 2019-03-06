@@ -248,15 +248,10 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
             mixed_key = "-".join([str(coarse_id), str(fine_id)])
             fine_dict[mixed_key] = yaml_dict["fine"][coarse_id][fine_id]
 
-    # Exclude incomplete tags from fine-level dictionary.
-    # Such incomplete tags are denoted by mixed pairs of the form 1-X, 2-X, etc.
-    rev_fine_dict_without_incomplete = {
-        k: fine_dict[k] for k in fine_dict if not (k.split("-") == "X")}
-
     # Invert the key-value relationship between mixed key and tag.
     # Now, tags are the keys, and mixed keys (coarse-fine IDs) are the values.
     # This is possible because tags are unique.
-    rev_fine_dict = {rev_fine_dict_without_incomplete[k]: k for k in fine_dict}
+    rev_fine_dict = {fine_dict[k]: k for k in fine_dict}
 
     # Read comma-separated values with the Pandas library
     pred_df = pd.read_csv(pred_csv_path)
@@ -265,6 +260,22 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
     # intermediate hashing step.
     pred_fine_dict = {rev_fine_dict[f]: pred_df[f] for f in rev_fine_dict}
 
+    # Loop over coarse tags.
+    n_samples = len(pred_df)
+    coarse_dict = yaml_dict["coarse"]
+    for coarse_id in yaml_dict["coarse"]:
+        # Construct incomplete fine tag by appending -X to the coarse tag.
+        incomplete_tag = str(coarse_id) + "-X"
+
+        # If the incomplete tag is not in the prediction, append a column of zeros.
+        # This is the case e.g. for coarse ID 7 ("dogs") which has a single
+        # fine-level tag ("7-1_dog-barking-whining") and thus no incomplete
+        # tag 7-X.
+        if incomplete_tag not in fine_dict.keys():
+            pred_fine_dict[incomplete_tag] =\
+                np.zeros((n_samples,)).astype('int')
+
+
     # Copy over the audio filename strings corresponding to each sample.
     pred_fine_dict["audio_filename"] = pred_df["audio_filename"]
 
@@ -272,7 +283,7 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
     pred_fine_df = pd.DataFrame.from_dict(pred_fine_dict)
 
     # Return output in DataFrame format.
-    # The column names are of the form 1-1, 1-2, 1-3 ... 2-1, 2-2, 2-3 ... etc.
+    # Column names are 1-1, 1-2, 1-3 ... 1-X, 2-1, 2-2, 2-3 ... 2-X, 3-1, etc.
     return pred_fine_df
 
 
