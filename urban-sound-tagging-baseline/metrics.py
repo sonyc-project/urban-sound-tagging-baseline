@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix
+import yaml
 
 
 def evaluate_fine(
@@ -63,13 +64,13 @@ def evaluate_fine(
 
     Returns
     -------
-    TP: int.
+    TP: int
         Number of true positives.
 
-    FP: int.
+    FP: int
         Number of false positives.
 
-    FN: int.
+    FN: int
         Number of false negatives.
     """
 
@@ -193,13 +194,13 @@ def evaluate_coarse(y_true, y_pred):
 
     Returns
     -------
-    TP: int.
+    TP: int
         Number of true positives.
 
-    FP: int.
+    FP: int
         Number of false positives.
 
-    FN: int.
+    FN: int
         Number of false negatives.
     """
     cm = confusion_matrix(y_true, y_pred)
@@ -214,9 +215,7 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
     Parse fine-level predictions from a CSV file containing both fine-level
     and coarse-level predictions (and possibly additional metadata).
     Returns a Pandas DataFrame in which the column names are mixed (coarse-fine)
-    IDs of the form 1-1, 1-2, 1-3, ... 2-1, 2-2, 2-3, etc.
-    Note that incomplete tags (1-X, 2-X) are not present in this DataFrame
-    and need to be parsed separately.
+    IDs of the form 1-1, 1-2, 1-3, ..., 1-X, 2-1, 2-2, 2-3, ... 2-X, 3-1, etc.
 
 
     Parameters
@@ -230,7 +229,7 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
 
     Returns
     -------
-    pred_fine_df: DataFrame.
+    pred_fine_df: DataFrame
         Fine-level complete predictions.
     """
 
@@ -272,12 +271,6 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
     # Build a new Pandas DataFrame with mixed keys as column names.
     pred_fine_df = pd.DataFrame.from_dict(pred_fine_dict)
 
-    # Tags have disappeared at this point.
-    # Restrict columns to only class presence, i.e. remove attributes of
-    # proximity, sensor ID, etc.
-    fine_columns = ["audio_filename"] + list(rev_fine_dict.values())
-    pred_fine_df = pred_fine_df[fine_columns]
-
     # Return output in DataFrame format.
     # The column names are of the form 1-1, 1-2, 1-3 ... 2-1, 2-2, 2-3 ... etc.
     return pred_fine_df
@@ -302,7 +295,7 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
 
     Returns
     -------
-    pred_coarse_df: DataFrame.
+    pred_coarse_df: DataFrame
         Coarse-level complete predictions.
     """
 
@@ -327,11 +320,53 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
     # Build a new Pandas DataFrame with coarse keys as column names.
     pred_coarse_df = pd.DataFrame.from_dict(pred_coarse_dict)
 
-    # Tags have disappeared at this point.
-    # Restrict columns to only class presence, i.e. remove attributes of
-    # proximity, sensor ID, etc.
-    coarse_columns = ["audio_filename"] + list(rev_coarse_dict.values())
-
     # Return output in DataFrame format.
     # The column names are of the form 1, 2, 3, etc.
     pred_coarse_df = pred_coarse_df[coarse_columns]
+
+
+def parse_ground_truth(annotation_path, yaml_path):
+    """
+    Parse ground truth annotations from a CSV file containing both fine-level
+    and coarse-level predictions (and possibly additional metadata).
+    Returns a Pandas DataFrame in which the column names are coarse
+    IDs of the form 1, 2, 3 etc.
+
+
+    Parameters
+    ----------
+    pred_csv_path: string
+        Path to the CSV file containing predictions.
+
+    yaml_path: string
+        Path to the YAML file containing coarse taxonomy.
+
+
+    Returns
+    -------
+    gt_df: DataFrame
+        Ground truth.
+    """
+    # Create dictionary to parse tags
+    with open(yaml_path, 'r') as stream:
+        try:
+            yaml_dict = yaml.load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+
+    # Load CSV file into a Pandas DataFrame.
+    ann_df = pd.read_csv(annotation_path)
+
+    # Restrict to ground truth ("annotator zero").
+    ann_df = ann_df[ann_df["annotator_id"]=0]
+
+    # Rename coarse columns.
+    coarse_renaming = {
+        "_".join(["high", "".join(coarse_dict[c].split("-")), "presence"]): str(c)
+        for c in coarse_dict}
+    gt_df = gt_df.rename(columns=coarse_renaming)
+
+    # Rename fine columns.
+    fine_renaming = {"_".join(["low", fine_dict[k], "presence"]): k
+        for k in fine_dict}
+    gt_df = gt_df.rename(columns=fine_renaming)
