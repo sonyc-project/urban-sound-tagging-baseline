@@ -381,3 +381,17 @@ def parse_ground_truth(annotation_path, yaml_path):
     fine_renaming = {"_".join(["low", fine_dict[k], "presence"]): k
         for k in fine_dict}
     gt_df = gt_df.rename(columns=fine_renaming)
+
+    # Loop over coarse tags.
+    n_samples = len(gt_df)
+    coarse_dict = yaml_dict["coarse"]
+    for coarse_id in yaml_dict["coarse"]:
+        # Construct incomplete fine tag by appending -X to the coarse tag.
+        incomplete_tag = str(coarse_id) + "-X"
+
+        # If the incomplete tag is not in the prediction, append a column of zeros.
+        # This is the case e.g. for coarse ID 7 ("dogs") which has a single
+        # fine-level tag ("7-1_dog-barking-whining") and thus no incomplete
+        # tag 7-X.
+        if incomplete_tag not in gt_df.columns:
+            gt_df[incomplete_tag] = np.zeros((n_samples,)).astype('int')
