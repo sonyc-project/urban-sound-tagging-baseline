@@ -395,3 +395,48 @@ def parse_ground_truth(annotation_path, yaml_path):
         # tag 7-X.
         if incomplete_tag not in gt_df.columns:
             gt_df[incomplete_tag] = np.zeros((n_samples,)).astype('int')
+
+
+def precision_recall_curves(prediction_path, annotation_path, yaml_path, mode):
+    # Create dictionary to parse tags
+    with open(yaml_path, 'r') as stream:
+        try:
+            yaml_dict = yaml.load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+
+    # Parse ground truth.
+    gf_df = parse_ground_truth(annotation_path, yaml_path)
+
+    # Parse predictions.
+    if mode == "fine":
+        pred_df = parse_fine_prediction(prediction_path)
+    elif mode == "coarse":
+        pred_df = parse_coarse_prediction(prediction_path)
+
+    # Loop over coarse categories.
+    for coarse_id in yaml_dict["coarse"]:
+        # List columns corresponding to that category
+        columns = [x for x in pred_df.columns if x.startswith(str(coarse_id))]
+
+        # Sort columns in alphanumeric order.
+        columns.sort()
+
+        # Restrict prediction to columns of interest.
+        restricted_pred_df = pred_df[columns]
+
+        # Restrict ground truth to columns of interest.
+        restricted_gt_df = gt_df[columns]
+
+        # Aggregate all prediction values into a "raveled" vector.
+        thresholds = np.ravel(restricted_pred_df.values)
+
+        # Sort in place.
+        thresholds.sort()
+
+        # FINE MODE.
+        if mode == "fine":
+            # Loop over thresholds in a decreasing order.
+            for threshold in reversed(thresholds):
+                # Threshold prediction.
+                Y_pred = restricted_df.values
