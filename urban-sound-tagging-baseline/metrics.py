@@ -174,8 +174,35 @@ def evaluate_fine(
 
 
 def evaluate_coarse(y_true, y_pred):
-    cm =\
-        confusion_matrix(y_true, y_pred)
+    """
+    Counts overall numbers of true positives (TP), false positives (FP),
+    and false negatives (FN) in the predictions of a system, for a single
+    Boolean attribute, in a dataset of N different samples.
+
+
+    Parameters
+    ----------
+    y_true: array of bool, shape = [n_samples,]
+        One-hot encoding of true presence for a given coarse tag.
+        y_true[n] is equal to 1 if the tag is present in the sample.
+
+    y_pred: array of bool, shape = [n_samples,]
+        One-hot encoding of predicted presence for a given coarse tag.
+        y_pred[n] is equal to 1 if the tag is present in the sample.
+
+
+    Returns
+    -------
+    TP: int.
+        Number of true positives.
+
+    FP: int.
+        Number of false positives.
+
+    FN: int.
+        Number of false negatives.
+    """
+    cm = confusion_matrix(y_true, y_pred)
     FP = cm[0, 1]
     FN = cm[1, 0]
     TP = cm[1, 1]
