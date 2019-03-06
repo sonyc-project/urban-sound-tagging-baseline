@@ -333,6 +333,9 @@ def confusion_matrix_coarse(y_true, y_pred):
     return TP, FP, FN
 
 
+def macro_average_precision_recall_curve(df_dict):
+    pass
+
 def parse_fine_prediction(pred_csv_path, yaml_path):
     """
     Parse fine-level predictions from a CSV file containing both fine-level
