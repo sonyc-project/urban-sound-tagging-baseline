@@ -21,7 +21,7 @@ def evaluate_fine(
     aggregated into a single count.
 
     For the samples with complete knowledge of both ground truth (Part I in the
-    code below), we simply apply classwise boolean logic to compute TP, FP, and
+    code below), we simply apply classwise Boolean logic to compute TP, FP, and
     FN independently for every fine-level tag, and finally aggregate across
     all tags.
 
@@ -74,7 +74,7 @@ def evaluate_fine(
     """
 
     ## PART I. SAMPLES WITH COMPLETE GROUND TRUTH AND COMPLETE PREDICTION
-    # Negate the true_incomplete boolean and replicate it K times, where
+    # Negate the true_incomplete Boolean and replicate it K times, where
     # K is the number of fine tags.
     # For each sample and fine tag, this mask is equal to 0 if the
     # ground truth contains the incomplete fine tag and 1 if the ground
@@ -153,13 +153,13 @@ def evaluate_fine(
 
 
     ## PART IV. AGGREGATE EVALUATION OF ALL SAMPLES
-    # The following three sums are performed over NxK booleans,
+    # The following three sums are performed over NxK Booleans,
     # implicitly converted as integers 0 (False) and 1 (True).
     TP_complete = sum(is_TP_complete)
     FP_complete = sum(is_FP_complete)
     FN_complete = sum(is_FN_complete)
 
-    # The following three sums are performed over N booleans,
+    # The following three sums are performed over N Booleans,
     # implicitly converted as integers 0 (False) and 1 (True).
     TP_incomplete = sum(is_TP_incomplete)
     FP_incomplete = sum(is_FP_incomplete)
