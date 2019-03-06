@@ -210,7 +210,31 @@ def evaluate_coarse(y_true, y_pred):
 
 
 def parse_fine_prediction(pred_csv_path, yaml_path):
-    # Create dictionary to parse squishcase tags
+    """
+    Parse fine-level predictions from a CSV file containing both fine-level
+    and coarse-level predictions (and possibly additional metadata).
+    Returns a Pandas DataFrame in which the column names are mixed (coarse-fine)
+    IDs of the form 1-1, 1-2, 1-3, ... 2-1, 2-2, 2-3, etc.
+    Note that incomplete tags (1-X, 2-X) are not present in this DataFrame
+    and need to be parsed separately.
+
+
+    Parameters
+    ----------
+    pred_csv_path: string
+        Path to the CSV file containing predictions.
+
+    yaml_path: string
+        Path to the YAML file containing fine taxonomy.
+
+
+    Returns
+    -------
+    pred_fine_df: DataFrame.
+        Fine-level complete predictions.
+    """
+
+    # Create dictionary to parse tags
     with open(yaml_path, 'r') as stream:
         try:
             yaml_dict = yaml.load(stream)
@@ -260,17 +284,54 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
 
 
 def parse_coarse_prediction(pred_csv_path, yaml_path):
-    # Create dictionary to parse squishcase tags
+    """
+    Parse coarse-level predictions from a CSV file containing both fine-level
+    and coarse-level predictions (and possibly additional metadata).
+    Returns a Pandas DataFrame in which the column names are coarse
+    IDs of the form 1, 2, 3 etc.
+
+
+    Parameters
+    ----------
+    pred_csv_path: string
+        Path to the CSV file containing predictions.
+
+    yaml_path: string
+        Path to the YAML file containing coarse taxonomy.
+
+
+    Returns
+    -------
+    pred_coarse_df: DataFrame.
+        Coarse-level complete predictions.
+    """
+
+    # Create dictionary to parse tags
     with open(yaml_path, 'r') as stream:
         try:
             yaml_dict = yaml.load(stream)
         except yaml.YAMLError as exc:
             print(exc)
 
+    # Collect tag names as strings and map them to coarse ID pairs.
     rev_coarse_dict = {
         "".join(yaml_dict["coarse"][k].split("-")): k for k in yaml_dict["coarse"]}
+
+    # Assign a predicted column to each coarse key, by using the tag as an
+    # intermediate hashing step.
     pred_coarse_dict = {rev_coarse_dict[c]: pred_df[c] for c in rev_coarse_dict}
+
+    # Copy over the audio filename strings corresponding to each sample.
     pred_coarse_dict["audio_filename"] = pred_df["audio_filename"]
+
+    # Build a new Pandas DataFrame with coarse keys as column names.
     pred_coarse_df = pd.DataFrame.from_dict(pred_coarse_dict)
+
+    # Tags have disappeared at this point.
+    # Restrict columns to only class presence, i.e. remove attributes of
+    # proximity, sensor ID, etc.
     coarse_columns = ["audio_filename"] + list(rev_coarse_dict.values())
+
+    # Return output in DataFrame format.
+    # The column names are of the form 1, 2, 3, etc.
     pred_coarse_df = pred_coarse_df[coarse_columns]
