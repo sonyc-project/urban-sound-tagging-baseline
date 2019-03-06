@@ -217,14 +217,47 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
         except yaml.YAMLError as exc:
             print(exc)
 
-    #
+    # Collect tag names as strings and map them to mixed (coarse-fine) ID pairs.
+    # The "mixed key" is a hyphenation of the coarse ID and fine ID.
+    fine_dict = {}
+    for coarse_id in yaml_dict["fine"]:
+        for fine_id in yaml_dict["fine"][coarse_id]:
+            mixed_key = "-".join([str(coarse_id), str(fine_id)])
+            fine_dict[mixed_key] = yaml_dict["fine"][coarse_id][fine_id]
+
+    # Exclude incomplete tags from fine-level dictionary.
+    # Such incomplete tags are denoted by mixed pairs of the form 1-X, 2-X, etc.
+    rev_fine_dict_without_incomplete = {
+        k: fine_dict[k] for k in fine_dict if not (k.split("-") == "X")}
+
+    # Invert the key-value relationship between mixed key and tag.
+    # Now, tags are the keys, and mixed keys (coarse-fine IDs) are the values.
+    # This is possible because tags are unique.
+    rev_fine_dict = {rev_fine_dict_without_incomplete[k]: k for k in fine_dict}
+
+    # Read comma-separated values with the Pandas library
     pred_df = pd.read_csv(pred_csv_path)
-    rev_fine_dict = {fine_dict[k]:k for k in fine_dict if not k.endswith("X")}
+
+    # Assign a predicted column to each mixed key, by using the tag as an
+    # intermediate hashing step.
     pred_fine_dict = {rev_fine_dict[f]: pred_df[f] for f in rev_fine_dict}
+
+    # Copy over the audio filename strings corresponding to each sample.
     pred_fine_dict["audio_filename"] = pred_df["audio_filename"]
+
+    # Build a new Pandas DataFrame with mixed keys as column names.
     pred_fine_df = pd.DataFrame.from_dict(pred_fine_dict)
+
+    # Tags have disappeared at this point.
+    # Restrict columns to only class presence, i.e. remove attributes of
+    # proximity, sensor ID, etc.
     fine_columns = ["audio_filename"] + list(rev_fine_dict.values())
     pred_fine_df = pred_fine_df[fine_columns]
+
+    # Return output in DataFrame format.
+    # The column names are of the form 1-1, 1-2, 1-3 ... 2-1, 2-2, 2-3 ... etc.
+    return pred_fine_df
+
 
 def parse_coarse_prediction(pred_csv_path, yaml_path):
     # Create dictionary to parse squishcase tags
