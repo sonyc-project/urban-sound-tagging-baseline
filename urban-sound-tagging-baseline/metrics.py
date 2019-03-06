@@ -333,23 +333,82 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
     return df_dict
 
 
-def micro_averaged_auprc(df_dict):
+def micro_averaged_auprc(df_dict, return_df=False):
     """
     Compute micro-averaged area under the precision-recall curve (AUPRC)
     from a dictionary of class-wise DataFrames obtained via `evaluate`.
     """
+    # List all unique values of threshold.
+    thresholds = np.unique(x["threshold"] for x in df_dict.values())
+
+    # Count number of unique thresholds.
+    n_thresholds = len(thresholds)
+
+    # Initialize arrays for TP, FP, and FN
+    TPs, FPs, FNs = (np.zeros((n_thresholds,)),) * 3
+
+    # Loop over thresholds.
+    for threshold in thresholds:
+
+        # Loop over coarse categories.
+        for coarse_id in df_dict.keys():
+            pass
+
+    # Add columns for precision, recall, and F1-score.
+    # NB: we take the maximum between TPs+FPs and mu = 0.5 in the
+    # denominator in order to avoid division by zero.
+    # This only ever happens if TP+FP < 1, which
+    # implies TP = 0 (because TP and FP are nonnegative integers),
+    # and therefore a numerator of exactly zero. Therefore, any additive
+    # offset mu would do as long as 0 < mu < 1. Choosing mu = 0.5 is
+    # purely arbitrary and has no effect on the outcome (i.e. zero).
+    mu = 0.5
+    eval_df["P"] = TPs / np.maximum(TPs + FPs, 0.5)
+
+    # Likewise for recalls, although this numerical safeguard is probably
+    # less necessary given that TP+FN=0 implies that there are zero
+    # positives in the ground truth, which is unlikely but no unheard of.
+    eval_df["R"] = TPs / np.maximum(TPs + FNs, mu)
+
+    recalls = np.array([1.0] + list(eval_df["R"]) + [0.0])
+    precisions = np.array([0.0] + list(eval_df["P"]) + [1.0])
+    auprc = auc(recalls, precisions)
+
+    # If the DataFrame containing the full P-R curve is requested.
+    if not return_df:
+        # Compute F1-scores.
+        # NB: we use the harmonic mean formula (1/F = 1/P + 1/R) rather than
+        # the more common F = (2*P*R)/(P+R) in order circumvent the edge case
+        # where both P and R are equal to 0 (i.e. TP = 0).
+        eval_df["F"] = 1 / (1/eval_df["P"] + 1/eval_df["R"])
+
+        # Return
+        return auprc, eval_df
+    else:
+        # Otherwise, return only the AUPRC as a scalar.
+        return auprc
+
 
 
 def macro_averaged_auprc(df_dict):
     """
     Compute macro-averaged area under the precision-recall curve (AUPRC)
-    from a dictionary of class-wise DataFrames obtaines via `evaluate`. 
+    from a dictionary of class-wise DataFrames obtaines via `evaluate`.
     """
+    # Initialize list of category-wise AUPRCs.
     auprcs = []
+
+    # Loop over coarse categories.
     for coarse_id in df_dict.keys():
+        # Load precisions and recalls.
+        # NB: we prepend a (1,0) and append a (0,1) to the curve so that the
+        # curve reaches the top-left and bottom-right quadrants of the
+        # precision-recall square.
         recalls = np.array([1.0] + list(df_dict[coarse_id]["R"]) + [0.0])
         precisions = np.array([0.0] + list(df_dict[coarse_id]["P"]) + [1.0])
         auprcs.append(auc(recalls, precisions))
+
+    # Average AUPRCs across coarse categories with uniform weighting.
     return np.mean(auprcs)
 
 
