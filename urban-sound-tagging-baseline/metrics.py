@@ -272,7 +272,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
 
             # Load ground truth as numpy array.
             Y_true = restricted_gt_df.values
-            is_true_incomplete = restricted_gt_df[incomplete_tag].values
+            is_true_incomplete = gt_df[incomplete_tag].values
 
             # Loop over thresholds in a decreasing order.
             for i, threshold in enumerate(reversed(thresholds)):
