@@ -409,8 +409,8 @@ def micro_averaged_auprc(df_dict, return_df=False):
     # positives in the ground truth, which is unlikely but no unheard of.
     eval_df["R"] = TPs / np.maximum(TPs + FNs, mu)
 
-    recalls = np.array([1.0] + list(eval_df["R"]) + [0.0])
-    precisions = np.array([0.0] + list(eval_df["P"]) + [1.0])
+    recalls = np.array([0.0] + list(eval_df["R"]) + [1.0])
+    precisions = np.array([1.0] + list(eval_df["P"]) + [0.0])
     auprc = auc(recalls, precisions)
 
     # If the DataFrame containing the full P-R curve is requested.
