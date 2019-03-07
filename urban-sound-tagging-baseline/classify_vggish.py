@@ -167,8 +167,8 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_l
     -------
     X_train
     y_train
-    X_test
-    y_test
+    X_valid
+    y_valid
     scaler
 
     """
@@ -193,32 +193,32 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_l
     X_train = np.array(X_train)[train_idxs]
     y_train = np.array(y_train)[train_idxs]
 
-    X_test = []
-    y_test = []
+    X_valid = []
+    y_valid = []
     for idx in test_file_idxs:
         X_ = list(embeddings[idx])
-        X_test += X_
+        X_valid += X_
         for _ in range(len(X_)):
-            y_test.append(target_list[idx])
+            y_valid.append(target_list[idx])
 
-    test_idxs = np.random.permutation(len(X_test))
-    X_test = np.array(X_test)[test_idxs]
-    y_test = np.array(y_test)[test_idxs]
+    test_idxs = np.random.permutation(len(X_valid))
+    X_valid = np.array(X_valid)[test_idxs]
+    y_valid = np.array(y_valid)[test_idxs]
 
     # standardize
     if standardize:
         scaler = StandardScaler()
         X_train = scaler.fit_transform(X_train)
-        X_test = scaler.transform(X_test)
+        X_valid = scaler.transform(X_valid)
     else:
         scaler = None
 
-    return X_train, y_train, X_test, y_test, scaler
+    return X_train, y_train, X_valid, y_valid, scaler
 
 
 ## GENERIC MODEL TRAINING
 
-def train_mlp(model, x_train, y_train, output_dir, loss=None, batch_size=64,
+def train_mlp(model, X_train, y_train, X_valid, y_valid, output_dir, loss=None, batch_size=64,
               num_epochs=100, patience=20, learning_rate=1e-4):
     """
     Train a MLP model with the given data.
@@ -226,7 +226,7 @@ def train_mlp(model, x_train, y_train, output_dir, loss=None, batch_size=64,
     Parameters
     ----------
     model
-    x_train
+    X_train
     y_train
     output_dir
     batch_size
@@ -252,8 +252,15 @@ def train_mlp(model, x_train, y_train, output_dir, loss=None, batch_size=64,
     cb = []
     # checkpoint
     model_weight_file = os.path.join(output_dir, 'model_best.h5')
+
     cb.append(keras.callbacks.ModelCheckpoint(model_weight_file,
-                                              save_weights_only=True))
+                                              save_weights_only=True,
+                                              save_best_only=True,
+                                              monitor='val_loss'))
+    # early stopping
+    cb.append(keras.callbacks.EarlyStopping(monitor='val_loss',
+                                            patience=patience))
+
     # monitor losses
     history_csv_file = os.path.join(output_dir, 'history.csv')
     cb.append(keras.callbacks.CSVLogger(history_csv_file, append=True,
@@ -262,8 +269,8 @@ def train_mlp(model, x_train, y_train, output_dir, loss=None, batch_size=64,
     # Fit model
     model.compile(Adam(lr=learning_rate), loss=loss, metrics=metrics)
     history = model.fit(
-        x=x_train, y=y_train, batch_size=batch_size, epochs=num_epochs,
-        callbacks=cb, verbose=2)
+        x=X_train, y=y_train, batch_size=batch_size, epochs=num_epochs,
+        validation_data=(X_valid, y_valid), callbacks=cb, verbose=2)
 
     return history
 
@@ -304,7 +311,7 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
 
     fine_target_labels = [x for fine_list in taxonomy.values()
                           for x in fine_list
-                          if 'X' not in x]
+                          if x.split('_')[0].split('-')[1] != 'X']
     full_fine_target_labels = [x for fine_list in taxonomy.values()
                                      for x in fine_list]
     coarse_target_labels = list(taxonomy.keys())
@@ -331,7 +338,7 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
     train_file_idxs = [idx for idx in train_file_idxs if idx not in ignore_idxs]
     test_file_idxs = [idx for idx in test_file_idxs if idx not in ignore_idxs]
 
-    X_train, y_train, X_test, y_test, scaler = prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
+    X_train, y_train, X_valid, y_valid, scaler = prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
                                                                         target_list, standardize=standardize)
 
     _, emb_size = X_train.shape
@@ -345,20 +352,20 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
 
     if label_mode == "fine":
         full_coarse_to_fine_terminal_idxs = np.cumsum([len(fine_list) for fine_list in taxonomy.values()])
-        incomplete_fine_subidxs = [len(fine_list) - 1 if 'X' in fine_list[-1] else None for fine_list in taxonomy.values()]
-        coarse_to_fine_end_idxs = np.cumsum([len([x for x in fine_list if 'X' not in x])
+        incomplete_fine_subidxs = [len(fine_list) - 1 if fine_list[-1].split('_')[0].split('-')[1] == 'X' else None for fine_list in taxonomy.values()]
+        coarse_to_fine_end_idxs = np.cumsum([len([x for x in fine_list if x.split('_')[0].split('-')[1] != 'X'])
                                                   for fine_list in taxonomy.values()])
 
         def masked_loss(y_true, y_pred):
             loss = None
-            for coarse_idx in range(len(full_coarse_to_fine_idxs)):
+            for coarse_idx in range(len(full_coarse_to_fine_terminal_idxs)):
                 true_terminal_idx = full_coarse_to_fine_terminal_idxs[coarse_idx]
                 true_incomplete_subidx = incomplete_fine_subidxs[coarse_idx]
                 pred_end_idx = coarse_to_fine_end_idxs[coarse_idx]
 
                 if coarse_idx != 0:
-                    true_start_idx = full_coarse_to_fine_idxs[coarse_idx-1]
-                    pred_start_idx = coarse_to_fine_idxs[coarse_idx-1]
+                    true_start_idx = full_coarse_to_fine_terminal_idxs[coarse_idx-1]
+                    pred_start_idx = coarse_to_fine_end_idxs[coarse_idx-1]
                 else:
                     true_start_idx = 0
                     pred_start_idx = 0
@@ -396,7 +403,7 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
     else:
         loss_func = None
 
-    history = train_mlp(model, X_train, y_train, results_dir, loss=loss_func,
+    history = train_mlp(model, X_train, y_train, X_valid, y_valid, results_dir, loss=loss_func,
                         batch_size=batch_size, num_epochs=num_epochs,
                         patience=patience, learning_rate=learning_rate)
 
