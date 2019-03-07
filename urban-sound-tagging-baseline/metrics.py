@@ -471,7 +471,7 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
 
     # Assign a predicted column to each coarse key, by using the tag as an
     # intermediate hashing step.
-    rev_coarse_dict = {}
+    pred_coarse_dict = {}
     for c in rev_coarse_dict:
         if c in pred_df:
             pred_coarse_dict[rev_coarse_dict[c]] = pred_df[c]
