@@ -228,6 +228,25 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
     elif mode == "coarse":
         pred_df = parse_coarse_prediction(prediction_path, yaml_path)
 
+    # Check consistency between ground truth and predictions.
+    # Make sure the files evaluated in both tables match.
+    pred_audio_set = set(pred_df['audio_filename'].tolist())
+    true_audio_set = set(gt_df['audio_filename'].tolist())
+    if not (pred_audio_set == true_audio_set):
+        not_in_pred = pred_audio_set - gt_audio_set
+        not_in_gt = gt_audio_set - pred_audio_set
+        err_msg =\
+            "File mismatch between ground truth and prediction table.\n\n" +\
+            "Missing files: {}.\n\n Extra files: {}"
+        raise ValueError(err_msg.format(list(not_in_gt), list(not_in_pred)))
+
+    # Make sure the size of the tables match
+    if not (len(gt_df) == len(pred_df)):
+        err_msg =\
+            "Size mismatch between ground truth ({} files) " +\
+            "and prediction table ({} files)."
+        raise ValueError(err_msg.format(len(gt_df), len(pred_df)))
+
     # Initialize dictionary of DataFrames.
     df_dict = {}
 
