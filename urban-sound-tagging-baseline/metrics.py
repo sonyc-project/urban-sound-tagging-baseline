@@ -487,7 +487,6 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
 
     # Return output in DataFrame format.
     # The column names are of the form 1, 2, 3, etc.
-    pred_coarse_df = pred_coarse_df[coarse_columns]
     return pred_coarse_df
 
 
