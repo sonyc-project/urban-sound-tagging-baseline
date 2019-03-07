@@ -463,7 +463,7 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
             print(exc)
 
     # Collect tag names as strings and map them to coarse ID pairs.
-    rev_coarse_dict = {yaml_dict["coarse"][k]: k
+    rev_coarse_dict = {"_".join([k, yaml_dict["coarse"][k]]): k
         for k in yaml_dict["coarse"]}
 
     # Read comma-separated values with the Pandas library
@@ -483,6 +483,7 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
     # Return output in DataFrame format.
     # The column names are of the form 1, 2, 3, etc.
     pred_coarse_df = pred_coarse_df[coarse_columns]
+    return pred_coarse_df
 
 
 def parse_fine_prediction(pred_csv_path, yaml_path):
