@@ -281,7 +281,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
 
                 # Threshold prediction for incomplete tag.
                 is_pred_incomplete =\
-                    restricted_pred_df[incomplete_tag].values > threshold
+                    pred_df[incomplete_tag].values > threshold
 
                 # Evaluate.
                 TPs[i], FPs[i], FNs[i] = confusion_matrix_fine(
