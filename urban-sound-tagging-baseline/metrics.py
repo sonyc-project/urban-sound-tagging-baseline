@@ -262,7 +262,9 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
 
         # Count number of thresholds.
         n_thresholds = len(thresholds)
-        TPs, FPs, FNs = (np.zeros((n_thresholds,).astype('int')),) * 3
+        TPs = np.zeros((n_thresholds,)).astype('int')
+        FPs = np.zeros((n_thresholds,)).astype('int')
+        FNs = np.zeros((n_thresholds,)).astype('int')
 
         # FINE MODE.
         if mode == "fine":
@@ -343,7 +345,9 @@ def micro_averaged_auprc(df_dict, return_df=False):
     n_thresholds = len(thresholds)
 
     # Initialize arrays for TP, FP, and FN
-    TPs, FPs, FNs = (np.zeros((n_thresholds,)),) * 3
+    TPs = np.zeros((n_thresholds,)).astype('int')
+    FPs = np.zeros((n_thresholds,)).astype('int')
+    FNs = np.zeros((n_thresholds,)).astype('int')
 
     # Loop over thresholds.
     for i, threshold in enumerate(thresholds):
