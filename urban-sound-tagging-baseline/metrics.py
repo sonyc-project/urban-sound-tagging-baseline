@@ -226,9 +226,9 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
 
     # Parse predictions.
     if mode == "fine":
-        pred_df = parse_fine_prediction(prediction_path)
+        pred_df = parse_fine_prediction(prediction_path, yaml_path)
     elif mode == "coarse":
-        pred_df = parse_coarse_prediction(prediction_path)
+        pred_df = parse_coarse_prediction(prediction_path, yaml_path)
 
     # Initialize dictionary of DataFrames.
     df_dict = {}
@@ -567,7 +567,7 @@ def parse_ground_truth(annotation_path, yaml_path):
 
     Parameters
     ----------
-    pred_csv_path: string
+    annotation_path: string
         Path to the CSV file containing predictions.
 
     yaml_path: string
@@ -590,16 +590,25 @@ def parse_ground_truth(annotation_path, yaml_path):
     ann_df = pd.read_csv(annotation_path)
 
     # Restrict to ground truth ("annotator zero").
-    ann_df = ann_df[ann_df["annotator_id"]==0]
+    gt_df = ann_df[ann_df["annotator_id"]==0]
 
     # Rename coarse columns.
+    coarse_dict = yaml_dict["coarse"]
     coarse_renaming = {
         "_".join(["high", "".join(coarse_dict[c].split("-")), "presence"]): str(c)
         for c in coarse_dict}
     gt_df = gt_df.rename(columns=coarse_renaming)
 
+    # Collect tag names as strings and map them to mixed (coarse-fine) ID pairs.
+    # The "mixed key" is a hyphenation of the coarse ID and fine ID.
+    fine_dict = {}
+    for coarse_id in yaml_dict["fine"]:
+        for fine_id in yaml_dict["fine"][coarse_id]:
+            mixed_key = "-".join([str(coarse_id), str(fine_id)])
+            fine_dict[mixed_key] = yaml_dict["fine"][coarse_id][fine_id]
+
     # Rename fine columns.
-    fine_renaming = {"_".join(["low", fine_dict[k], "presence"]): k
+    fine_renaming = {"_".join([k, fine_dict[k], "presence"]): k
         for k in fine_dict}
     gt_df = gt_df.rename(columns=fine_renaming)
 
