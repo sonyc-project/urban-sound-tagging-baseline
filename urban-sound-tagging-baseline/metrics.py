@@ -331,6 +331,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         # and therefore a numerator of exactly zero. Therefore, any additive
         # offset mu would do as long as 0 < mu < 1. Choosing mu = 0.5 is
         # purely arbitrary and has no effect on the outcome (i.e. zero).
+        mu = 0.5
         eval_df["P"] = TPs / np.maximum(TPs + FPs, mu)
 
         # Likewise for recalls, although this numerical safeguard is probably
