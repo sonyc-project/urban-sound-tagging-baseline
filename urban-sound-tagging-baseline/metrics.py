@@ -348,11 +348,30 @@ def micro_averaged_auprc(df_dict, return_df=False):
     TPs, FPs, FNs = (np.zeros((n_thresholds,)),) * 3
 
     # Loop over thresholds.
-    for threshold in thresholds:
+    for i, threshold in enumerate(thresholds):
+
+        # Initialize counters of TP, FP, and FN across all categories.
+        global_TP, global_FP, global_FN = 0, 0, 0
 
         # Loop over coarse categories.
         for coarse_id in df_dict.keys():
-            pass
+
+            # Find last row above threshold.
+            row = df_dict[coarse_id][df_dict[coarse_id] > threshold].iloc[-1]
+
+            # Increment TP, FP, and FN.
+            global_TP += row["TP"]
+            global_FP += row["FP"]
+            global_FN += row["FN"]
+
+        # Store micro-averaged values of TP, FP, and FN for the given threshold.
+        TPs[i] = global_TP
+        FPs[i] = global_FP
+        FNs[i] = global_FN
+
+    # Build DataFrame from columns.
+    eval_df = pd.DataFrame({
+        "threshold": thresholds, "TP": TPs, "FP": FPs, "FN": FNs})
 
     # Add columns for precision, recall, and F1-score.
     # NB: we take the maximum between TPs+FPs and mu = 0.5 in the
