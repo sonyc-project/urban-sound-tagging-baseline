@@ -217,10 +217,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
 
     # Create dictionary to parse tags
     with open(yaml_path, 'r') as stream:
-        try:
-            yaml_dict = yaml.load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+        yaml_dict = yaml.load(stream)
 
     # Parse ground truth.
     gf_df = parse_ground_truth(annotation_path, yaml_path)
@@ -457,10 +454,7 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
 
     # Create dictionary to parse tags
     with open(yaml_path, 'r') as stream:
-        try:
-            yaml_dict = yaml.load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+        yaml_dict = yaml.load(stream)
 
     # Collect tag names as strings and map them to coarse ID pairs.
     rev_coarse_dict = {"_".join([str(k), yaml_dict["coarse"][k]]): k
@@ -515,10 +509,7 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
 
     # Create dictionary to parse tags
     with open(yaml_path, 'r') as stream:
-        try:
-            yaml_dict = yaml.load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+        yaml_dict = yaml.load(stream)
 
     # Collect tag names as strings and map them to mixed (coarse-fine) ID pairs.
     # The "mixed key" is a hyphenation of the coarse ID and fine ID.
@@ -598,10 +589,7 @@ def parse_ground_truth(annotation_path, yaml_path):
     """
     # Create dictionary to parse tags
     with open(yaml_path, 'r') as stream:
-        try:
-            yaml_dict = yaml.load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+        yaml_dict = yaml.load(stream)
 
     # Load CSV file into a Pandas DataFrame.
     ann_df = pd.read_csv(annotation_path)
