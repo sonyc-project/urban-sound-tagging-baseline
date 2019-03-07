@@ -124,7 +124,7 @@ def confusion_matrix_fine(
     # The result is a (N,) vector.
     y_pred_coarsened_without_incomplete = np.logical_or.reduce(Y_pred, axis=1)
     y_pred_coarsened = np.logical_or(
-        (y_pred_reduced_without_incomplete, is_pred_incomplete))
+        (y_pred_coarsened_without_incomplete, is_pred_incomplete))
 
     # Compute true positives for samples with incomplete ground truth.
     # For each sample n, is_TP_incomplete is equal to 1
