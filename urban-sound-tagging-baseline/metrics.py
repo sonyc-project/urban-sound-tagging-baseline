@@ -471,8 +471,13 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
 
     # Assign a predicted column to each coarse key, by using the tag as an
     # intermediate hashing step.
-    pred_coarse_dict = {
-        rev_coarse_dict[c]: pred_df[c] for c in rev_coarse_dict}
+    rev_coarse_dict = {}
+    for c in rev_coarse_dict:
+        if c in pred_df:
+            pred_coarse_dict[rev_coarse_dict[c]] = pred_df[c]
+        else:
+            pred_coarse_dict[rev_coarse_dict[c]] = np.zeros((len(pred_df),))
+            warnings.warn("Column not found: " + c)
 
     # Copy over the audio filename strings corresponding to each sample.
     pred_coarse_dict["audio_filename"] = pred_df["audio_filename"]
