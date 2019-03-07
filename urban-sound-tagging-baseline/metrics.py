@@ -220,7 +220,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         yaml_dict = yaml.load(stream)
 
     # Parse ground truth.
-    gf_df = parse_ground_truth(annotation_path, yaml_path)
+    gt_df = parse_ground_truth(annotation_path, yaml_path)
 
     # Parse predictions.
     if mode == "fine":
