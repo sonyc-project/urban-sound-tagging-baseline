@@ -503,7 +503,7 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
 
     # Return output in DataFrame format.
     # The column names are of the form 1, 2, 3, etc.
-    return pred_coarse_df
+    return pred_coarse_df.sort_values('audio_filename')
 
 
 def parse_fine_prediction(pred_csv_path, yaml_path):
@@ -584,7 +584,7 @@ def parse_fine_prediction(pred_csv_path, yaml_path):
 
     # Return output in DataFrame format.
     # Column names are 1-1, 1-2, 1-3 ... 1-X, 2-1, 2-2, 2-3 ... 2-X, 3-1, etc.
-    return pred_fine_df
+    return pred_fine_df.sort_values('audio_filename')
 
 
 def parse_ground_truth(annotation_path, yaml_path):
@@ -655,4 +655,4 @@ def parse_ground_truth(annotation_path, yaml_path):
             gt_df[incomplete_tag] = np.zeros((n_samples,)).astype('int')
 
     # Return output in DataFrame format.
-    return gt_tf
+    return gt_tf.sort_values('audio_filename')
