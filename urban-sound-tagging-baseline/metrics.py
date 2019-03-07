@@ -631,3 +631,6 @@ def parse_ground_truth(annotation_path, yaml_path):
         # tag 7-X.
         if incomplete_tag not in gt_df.columns:
             gt_df[incomplete_tag] = np.zeros((n_samples,)).astype('int')
+
+    # Return output in DataFrame format.
+    return gf_tf
