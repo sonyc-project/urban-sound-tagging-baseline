@@ -599,7 +599,7 @@ def parse_ground_truth(annotation_path, yaml_path):
 
     # Restrict to ground truth ("annotator zero").
     gt_df = ann_df[
-        (ann_df["annotator_id"]==0) and (ann_df["split"]=="validate")]
+        (ann_df["annotator_id"]==0) & (ann_df["split"]=="validate")]
 
     # Rename coarse columns.
     coarse_dict = yaml_dict["coarse"]
