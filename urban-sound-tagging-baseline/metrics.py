@@ -272,7 +272,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
 
             # Load ground truth as numpy array.
             Y_true = restricted_gt_df.values
-            y_true_predicted = restricted_gt_df[incomplete_tag].values
+            is_true_incomplete = restricted_gt_df[incomplete_tag].values
 
             # Loop over thresholds in a decreasing order.
             for i, threshold in enumerate(reversed(thresholds)):
@@ -280,7 +280,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
                 Y_pred = restricted_pred_df.values > threshold
 
                 # Threshold prediction for incomplete tag.
-                y_pred_incomplete =\
+                is_pred_incomplete =\
                     restricted_pred_df[incomplete_tag].values > threshold
 
                 # Evaluate.
