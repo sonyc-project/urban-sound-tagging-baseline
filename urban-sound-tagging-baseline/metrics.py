@@ -590,7 +590,7 @@ def parse_ground_truth(annotation_path, yaml_path):
     ann_df = pd.read_csv(annotation_path)
 
     # Restrict to ground truth ("annotator zero").
-    ann_df = ann_df[ann_df["annotator_id"]=0]
+    ann_df = ann_df[ann_df["annotator_id"]==0]
 
     # Rename coarse columns.
     coarse_renaming = {
