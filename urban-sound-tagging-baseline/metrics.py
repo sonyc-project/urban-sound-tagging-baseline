@@ -119,7 +119,7 @@ def confusion_matrix_fine(
     # Compute a vector of "coarsened predictions".
     # For each sample, the coarsened prediction is equal to 1 if any of the
     # complete fine tags is predicted as present, or if the incomplete fine
-    # tag is predicted as present. Conversely, it is set equal to 1 if all
+    # tag is predicted as present. Conversely, it is set equal to 0 if all
     # of the complete fine tags are predicted as absent, and if the incomplete
     # fine tags are predicted as absent.
     # The result is a (N,) vector.
