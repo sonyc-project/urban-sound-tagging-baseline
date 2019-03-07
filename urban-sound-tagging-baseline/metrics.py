@@ -150,27 +150,27 @@ def confusion_matrix_fine(
     # (ii)  the coarsened prediction of sample n does not contain any tag
     # The result is a (N,) vector.
     is_FN_incomplete = np.logical_and(
-        is_true_incomplete, np.logical_not(y_pred_reduced))
+        is_true_incomplete, np.logical_not(y_pred_coarsened))
 
 
-    ## PART IV. AGGREGATE EVALUATION OF ALL SAMPLES
+    ## PART III. AGGREGATE EVALUATION OF ALL SAMPLES
     # The following three sums are performed over NxK Booleans,
     # implicitly converted as integers 0 (False) and 1 (True).
-    TP_complete = sum(is_TP_complete)
-    FP_complete = sum(is_FP_complete)
-    FN_complete = sum(is_FN_complete)
+    TP_complete = np.sum(is_TP_complete)
+    FP_complete = np.sum(is_FP_complete)
+    FN_complete = np.sum(is_FN_complete)
 
     # The following three sums are performed over N Booleans,
     # implicitly converted as integers 0 (False) and 1 (True).
-    TP_incomplete = sum(is_TP_incomplete)
-    FP_incomplete = sum(is_FP_incomplete)
-    FN_incomplete = sum(is_FN_incomplete)
+    TP_incomplete = np.sum(is_TP_incomplete)
+    FP_incomplete = np.sum(is_FP_incomplete)
+    FN_incomplete = np.sum(is_FN_incomplete)
 
     # Sum FP, TP, and FN for samples that have complete ground truth
     # with FP, TP, and FN for samples that have incomplete ground truth.
     TP = TP_complete + TP_incomplete
-    FP = FP_complete + is_FP_incomplete
-    FN = FN_complete + is_FN_incomplete
+    FP = FP_complete + FP_incomplete
+    FN = FN_complete + FN_incomplete
     return TP, FP, FN
 
 
