@@ -660,4 +660,4 @@ def parse_ground_truth(annotation_path, yaml_path):
             gt_df[incomplete_tag] = np.zeros((n_samples,)).astype('int')
 
     # Return output in DataFrame format.
-    return gt_tf.sort_values('audio_filename')
+    return gt_df.sort_values('audio_filename')
