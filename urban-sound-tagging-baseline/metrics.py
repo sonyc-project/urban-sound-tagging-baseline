@@ -253,7 +253,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
     # Loop over coarse categories.
     for coarse_id in yaml_dict["coarse"]:
         # List columns corresponding to that category
-        if mode == "fine":
+        if mode == "coarse":
             columns = [str(coarse_id)]
         else:
             columns = [column for column in pred_df.columns
@@ -501,9 +501,9 @@ def parse_coarse_prediction(pred_csv_path, yaml_path):
     pred_coarse_dict = {}
     for c in rev_coarse_dict:
         if c in pred_df:
-            pred_coarse_dict[rev_coarse_dict[c]] = pred_df[c]
+            pred_coarse_dict[str(rev_coarse_dict[c])] = pred_df[c]
         else:
-            pred_coarse_dict[rev_coarse_dict[c]] = np.zeros((len(pred_df),))
+            pred_coarse_dict[str(rev_coarse_dict[c])] = np.zeros((len(pred_df),))
             warnings.warn("Column not found: " + c)
 
     # Copy over the audio filename strings corresponding to each sample.
