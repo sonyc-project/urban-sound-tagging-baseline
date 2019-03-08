@@ -451,9 +451,11 @@ def macro_averaged_auprc(df_dict):
         # NB: we prepend a (1,0) and append a (0,1) to the curve so that the
         # curve reaches the top-left and bottom-right quadrants of the
         # precision-recall square.
-        sorting_indices = np.argsort(list(eval_df["R"]))
-        recalls = np.array([0.0] + list(eval_df["R"][sorting_indices]) + [1.0])
-        precisions = np.array([1.0] + list(eval_df["P"][sorting_indices]) + [0.0])
+        sorting_indices = df_dict[coarse_id]["R"].argsort()
+        recalls = np.array(
+            [0.0] + list(df_dict[coarse_id]["R"][sorting_indices]) + [1.0])
+        precisions = np.array(
+            [1.0] + list(df_dict[coarse_id]["P"][sorting_indices]) + [0.0])
         auprcs.append(auc(recalls, precisions))
 
     # Average AUPRCs across coarse categories with uniform weighting.
