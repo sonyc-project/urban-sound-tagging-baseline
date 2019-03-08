@@ -253,10 +253,13 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
     # Loop over coarse categories.
     for coarse_id in yaml_dict["coarse"]:
         # List columns corresponding to that category
-        columns = [column for column in pred_df.columns
-            if (str(column).startswith(str(coarse_id))) and
-               ("-" in str(column)) and
-               (not str(column).endswith("X"))]
+        if mode == "fine":
+            columns = [str(coarse_id)]
+        else:
+            columns = [column for column in pred_df.columns
+                if (str(column).startswith(str(coarse_id))) and
+                   ("-" in str(column)) and
+                   (not str(column).endswith("X"))]
 
         # Sort columns in alphanumeric order.
         columns.sort()
