@@ -422,7 +422,7 @@ def micro_averaged_auprc(df_dict, return_df=False):
     auprc = auc(recalls, precisions)
 
     # If the DataFrame containing the full P-R curve is requested.
-    if not return_df:
+    if return_df:
         # Compute F1-scores.
         # NB: we use the harmonic mean formula (1/F = 1/P + 1/R) rather than
         # the more common F = (2*P*R)/(P+R) in order circumvent the edge case
