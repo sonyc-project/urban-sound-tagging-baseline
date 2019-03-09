@@ -644,7 +644,7 @@ def parse_ground_truth(annotation_path, yaml_path):
     # Rename coarse columns.
     coarse_dict = yaml_dict["coarse"]
     coarse_renaming = {
-        "_".join(["high", "".join(coarse_dict[c].split("-")), "presence"]): str(c)
+        "_".join([str(c), coarse_dict[c], "presence"]): str(c)
         for c in coarse_dict}
     gt_df = gt_df.rename(columns=coarse_renaming)
 
