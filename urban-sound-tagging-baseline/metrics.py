@@ -101,7 +101,7 @@ def confusion_matrix_fine(
     # (iii) the prediction of sample n contains complete fine tag k
     # The result is a (N, K) matrix.
     is_FP_complete = np.logical_and.reduce(
-        (np.logical_not(Y_true), Y_pred, is_true_complete))
+        (np.logical_not(Y_true), Y_pred, Y_true_complete))
 
     # Compute false negatives for samples with complete ground truth.
     # For each sample n and each complete tag k, is_FN_complete is equal to 1
