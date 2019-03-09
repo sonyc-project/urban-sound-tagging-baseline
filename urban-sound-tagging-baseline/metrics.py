@@ -145,7 +145,7 @@ def confusion_matrix_fine(
     is_TP_incomplete = np.logical_and.reduce((
         is_true_incomplete,
         y_pred_coarsened,
-        np.logical_and.reduce(np.logical_not(is_TP_complete), axis=1))
+        np.logical_and.reduce(np.logical_not(is_TP_complete), axis=1)))
 
     # Compute false positives for samples with incomplete ground truth.
     # For each sample n, is_FP_incomplete is equal to 1
