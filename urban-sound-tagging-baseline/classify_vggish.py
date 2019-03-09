@@ -117,7 +117,8 @@ def binary_accuracy_round(y_true, y_pred):
 ## MODEL CONSTRUCTION
 
 
-def construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=128, l2_reg=1e-5):
+def construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=128,
+                            num_hidden_layers=0, l2_reg=1e-5):
     """
     Construct a 2-hidden-layer MLP model for framewise processing
 
@@ -133,13 +134,17 @@ def construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=128, l2_reg
     model
 
     """
+    # Input layer
     inp = Input(shape=(emb_size,), dtype='float32', name='input')
-    y = Dense(hidden_layer_size, activation='relu',
-              kernel_regularizer=regularizers.l2(l2_reg), name='dense1')(inp)
-    y = Dense(hidden_layer_size,
-              activation='relu', kernel_regularizer=regularizers.l2(l2_reg),
-              name='dense2')(y)
+    y = inp
 
+    # Add hidden layers
+    for idx in range(num_hidden_layers):
+        y = Dense(hidden_layer_size, activation='relu',
+                  kernel_regularizer=regularizers.l2(l2_reg),
+                  name='dense{}'.format(idx+1))(y)
+
+    # Output layer
     y = Dense(num_classes, activation='sigmoid',
               kernel_regularizer=regularizers.l2(l2_reg), name='output')(y)
 
@@ -279,7 +284,7 @@ def train_mlp(model, X_train, y_train, X_valid, y_valid, output_dir, loss=None, 
 
 def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine", batch_size=64,
                   num_epochs=100, patience=20, learning_rate=1e-4, hidden_layer_size=128,
-                  l2_reg=1e-5, standardize=True, timestamp=None):
+                  num_hidden_layers=0, l2_reg=1e-5, standardize=True, timestamp=None):
     """
     Train and evaluate a framewise MLP model.
 
@@ -343,7 +348,8 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
 
     _, emb_size = X_train.shape
 
-    model = construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=hidden_layer_size, l2_reg=l2_reg)
+    model = construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=hidden_layer_size,
+        num_hidden_layers=num_hidden_layers, l2_reg=l2_reg)
 
     if not timestamp:
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -526,6 +532,7 @@ if __name__ == '__main__':
     parser.add_argument("exp_id", type=str)
 
     parser.add_argument("--hidden_layer_size", type=int, default=128)
+    parser.add_argument("--num_hidden_layers", type=int, default=0)
     parser.add_argument("--learning_rate", type=float, default=1e-4)
     parser.add_argument("--l2_reg", type=float, default=1e-5)
     parser.add_argument("--batch_size", type=int, default=64)
@@ -556,6 +563,7 @@ if __name__ == '__main__':
                     patience=args.patience,
                     learning_rate=args.learning_rate,
                     hidden_layer_size=args.hidden_layer_size,
+                    num_hidden_layers=args.num_hidden_layers,
                     l2_reg=args.l2_reg,
                     standardize=(not args.no_standardize),
                     timestamp=timestamp)
