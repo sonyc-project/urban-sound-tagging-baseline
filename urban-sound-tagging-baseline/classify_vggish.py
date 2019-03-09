@@ -418,8 +418,7 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
 
     for aggregation_type, y_pred in results['test'].items():
         generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
-                             aggregation_type, label_mode, taxonomy,
-                             fine_target_labels, coarse_target_labels)
+                             aggregation_type, label_mode, taxonomy)
 
 
 ## MODEL EVALUATION
@@ -465,16 +464,19 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None):
 
 
 def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
-                         aggregation_type, label_mode, taxonomy,
-                         fine_target_labels, coarse_target_labels):
+                         aggregation_type, label_mode, taxonomy):
     output_path = os.path.join(results_dir, "output_{}.csv".format(aggregation_type))
     test_file_list = [file_list[idx] for idx in test_file_idxs]
+
+    full_fine_target_labels = [x for fine_list in taxonomy.values()
+                                     for x in fine_list]
+    coarse_target_labels = list(taxonomy.keys())
 
     with open(output_path, 'w') as f:
         csvwriter = csv.writer(f)
 
         # Write fields
-        fields = ["audio_filename"] + fine_target_labels + coarse_target_labels
+        fields = ["audio_filename"] + full_fine_target_labels + coarse_target_labels
         csvwriter.writerow(fields)
 
         # Write results for each file to CSV
@@ -482,23 +484,30 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
             row = [filename]
 
             if label_mode == "fine":
-                # Add fine level labels
-                row += list(y)
-                # Add coarse level labels corresponding to fine level predictions
-                # Obtain by taking the maximum from the fine level labels
+                fine_values = []
                 coarse_values = [0 for _ in range(len(coarse_target_labels))]
                 coarse_idx = 0
                 fine_idx = 0
                 for coarse_label in coarse_target_labels:
                     fine_label_list = taxonomy[coarse_label]
                     for fine_label in fine_label_list:
-                        if fine_label not in fine_target_labels:
+                        if 'X' in fine_label.split('_')[0].split('-')[1]:
+                            # Put a 0 for other, since the baseline doesn't account
+                            # account for it
+                            fine_values.append(0)
                             continue
-                        coarse_values[coarse_idx] = max(coarse_values[coarse_idx], y[fine_idx])
+
+                        # Append the next fine prediction
+                        fine_values.append(y[fine_idx])
+
+                        # Add coarse level labels corresponding to fine level predictions
+                        # Obtain by taking the maximum from the fine level labels
+                        coarse_values[coarse_idx] = max(coarse_values[coarse_idx],
+                                                        y[fine_idx])
                         fine_idx += 1
                     coarse_idx += 1
 
-                row += coarse_values
+                row += fine_values + coarse_values
 
             else:
                 # Add placeholder values for fine level
