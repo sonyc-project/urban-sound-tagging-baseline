@@ -82,17 +82,16 @@ def confusion_matrix_fine(
     # ground truth contains the incomplete fine tag and 1 if the ground
     # truth does not contain the incomplete fine tag.
     # The result is a (N, K) matrix.
-    is_true_complete = np.tile(np.logical_not(
+    Y_true_complete = np.tile(np.logical_not(
         is_true_incomplete)[:, np.newaxis], (1, Y_pred.shape[1]))
 
     # Compute true positives for samples with complete ground truth.
     # For each sample n and each complete tag k, is_TP_complete is equal to 1
-    # if and only if the following three conditions are met:
-    # (i)   the ground truth of sample n is complete
-    # (ii)  the ground truth of sample n contains complete fine tag k
-    # (iii) the prediction of sample n contains complete fine tag k
+    # if and only if the following two conditions are met:
+    # (i)  the ground truth of sample n contains complete fine tag k
+    # (ii) the prediction of sample n contains complete fine tag k
     # The result is a (N, K) matrix.
-    is_TP_complete = np.logical_and.reduce((Y_true, Y_pred, is_true_complete))
+    is_TP_complete = np.logical_and.reduce((Y_true, Y_pred))
 
     # Compute false positives for samples with complete ground truth.
     # For each sample n and each complete tag k, is_FP_complete is equal to 1
@@ -138,11 +137,15 @@ def confusion_matrix_fine(
 
     # Compute true positives for samples with incomplete ground truth.
     # For each sample n, is_TP_incomplete is equal to 1
-    # if and only if the following two conditions are met:
+    # if and only if the following three conditions are met:
     # (i)   the ground truth contains the incomplete fine tag
     # (ii)  the coarsened prediction of sample n contains at least one tag
+    # (iii) none of the predicted complete tags match a true complete tag
     # The result is a (N,) vector.
-    is_TP_incomplete = np.logical_and(is_true_incomplete, y_pred_coarsened)
+    is_TP_incomplete = np.logical_and.reduce((
+        is_true_incomplete,
+        y_pred_coarsened,
+        np.logical_and.reduce(np.logical_not(is_TP_complete), axis=1))
 
     # Compute false positives for samples with incomplete ground truth.
     # For each sample n, is_FP_incomplete is equal to 1
