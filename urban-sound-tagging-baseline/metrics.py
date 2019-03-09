@@ -116,7 +116,7 @@ def confusion_matrix_fine(
 
 
     ## PART II. SAMPLES WITH INCOMPLETE GROUND TRUTH OR INCOMPLETE PREDICTION.
-    # Compute a vector of "coarsened predictions".
+    # Compute a vector of "coarsened prediction".
     # For each sample, the coarsened prediction is equal to 1 if any of the
     # complete fine tags is predicted as present, or if the incomplete fine
     # tag is predicted as present. Conversely, it is set equal to 0 if all
@@ -126,6 +126,16 @@ def confusion_matrix_fine(
     y_pred_coarsened_without_incomplete = np.logical_or.reduce(Y_pred, axis=1)
     y_pred_coarsened = np.logical_or(
         y_pred_coarsened_without_incomplete, is_pred_incomplete)
+
+    # Compute a vector of "coarsened ground truth".
+    # For each sample, the coarsened ground truth is equal to 1 if none of the
+    # complete fine tags are truly present, and if the incomplete fine tag is
+    # truly present. Conversely, it is set equal to 0 if any of the complete
+    # fine tags is truly present, or if the incomplete fine tag is truly absent.
+    # The result is a (N,) vector.
+    y_true_coarsened_without_incomplete = np.logical_or.reduce(Y_true, axis=1)
+    y_true_coarsened = np.logical_and(
+        np.logical_not(y_true_coarsened_without_incomplete), is_true_incomplete)
 
     # Compute true positives for samples with incomplete ground truth.
     # For each sample n, is_TP_incomplete is equal to 1
@@ -151,7 +161,7 @@ def confusion_matrix_fine(
     # (ii)  the coarsened prediction of sample n does not contain any tag
     # The result is a (N,) vector.
     is_FN_incomplete = np.logical_and(
-        is_true_incomplete, np.logical_not(y_pred_coarsened))
+        y_pred_coarsened, np.logical_not(y_pred_coarsened))
 
 
     ## PART III. AGGREGATE EVALUATION OF ALL SAMPLES
