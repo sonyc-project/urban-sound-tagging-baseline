@@ -242,8 +242,8 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
     pred_audio_set = set(pred_df['audio_filename'].tolist())
     true_audio_set = set(gt_df['audio_filename'].tolist())
     if not (pred_audio_set == true_audio_set):
-        extra_files = pred_audio_set - gt_audio_set
-        missing_files = gt_audio_set - pred_audio_set
+        extra_files = pred_audio_set - true_audio_set
+        missing_files = true_audio_set - pred_audio_set
         err_msg =\
             "File mismatch between ground truth and prediction table.\n\n" \
             "Missing files: {}\n\n Extra files: {}"
