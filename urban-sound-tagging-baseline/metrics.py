@@ -106,13 +106,11 @@ def confusion_matrix_fine(
 
     # Compute false negatives for samples with complete ground truth.
     # For each sample n and each complete tag k, is_FN_complete is equal to 1
-    # if and only if the following three conditions are met:
-    # (i)   the ground truth of sample n is is complete
-    # (ii)  the ground truth of sample n contains complete fine tag k
-    # (iii) the prediction of sample n does not contain complete fine tag k
+    # if and only if the following two conditions are met:
+    # (i)  the ground truth of sample n contains complete fine tag k
+    # (ii) the prediction of sample n does not contain complete fine tag k
     # The result is a (N, K) matrix.
-    is_FN_complete = np.logical_and.reduce(
-        (Y_true, np.logical_not(Y_pred), is_true_complete))
+    is_FN_complete = np.logical_and(Y_true, np.logical_not(Y_pred))
 
 
     ## PART II. SAMPLES WITH INCOMPLETE GROUND TRUTH OR INCOMPLETE PREDICTION.
