@@ -160,7 +160,7 @@ def confusion_matrix_fine(
     # (ii)  the coarsened prediction of sample n does not contain any tag
     # The result is a (N,) vector.
     is_FN_incomplete = np.logical_and(
-        y_true_coarsened, np.logical_not(is_pred_incomplete))
+        y_true_coarsened, np.logical_not(y_pred_coarsened))
 
 
     ## PART III. AGGREGATE EVALUATION OF ALL SAMPLES
