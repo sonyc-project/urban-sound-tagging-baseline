@@ -15,7 +15,7 @@ import keras.backend as K
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, average_precision_score, precision_score, recall_score
 
-import sonyc_data
+import ust_data
 
 
 ## HELPERS
@@ -310,9 +310,9 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
 
     """
     annotation_path = os.path.join(dataset_dir, "annotations.csv")
-    annotation_data = sonyc_data.load_ust_data(annotation_path)
+    annotation_data = ust_data.load_ust_data(annotation_path)
     file_list = list(annotation_data.keys())
-    taxonomy = sonyc_data.get_taxonomy(annotation_data)
+    taxonomy = ust_data.get_taxonomy(annotation_data)
 
     fine_target_labels = [x for fine_list in taxonomy.values()
                           for x in fine_list
@@ -322,9 +322,9 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
     coarse_target_labels = list(taxonomy.keys())
 
     # For fine, we include incomplete labels in targets for computing the loss
-    fine_target_list = sonyc_data.get_file_targets(annotation_data, full_fine_target_labels)
-    coarse_target_list = sonyc_data.get_file_targets(annotation_data, coarse_target_labels)
-    train_file_idxs, test_file_idxs = sonyc_data.get_subset_split(annotation_data)
+    fine_target_list = ust_data.get_file_targets(annotation_data, full_fine_target_labels)
+    coarse_target_list = ust_data.get_file_targets(annotation_data, coarse_target_labels)
+    train_file_idxs, test_file_idxs = ust_data.get_subset_split(annotation_data)
 
     if label_mode == "fine":
         target_list = fine_target_list

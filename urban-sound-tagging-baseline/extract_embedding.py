@@ -10,7 +10,7 @@ from vggish import vggish_input
 from vggish import vggish_postprocess
 from vggish import vggish_slim
 
-from sonyc_data import load_ust_data
+from ust_data import load_ust_data
 
 
 def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='vggish/input_features',

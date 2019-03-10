@@ -1,4 +1,3 @@
-# Copy from https://github.com/sonyc-project/sensor-embedding/blob/master/sensor_embedding/downstream/sonyc_data.py
 import csv
 import re
 import numpy as np
