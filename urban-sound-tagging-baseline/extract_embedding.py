@@ -2,6 +2,7 @@ import argparse
 import gzip
 import os
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 import tensorflow as tf
@@ -109,6 +110,7 @@ def extract_embeddings_vggish(annotation_path, dataset_dir, output_dir,
 
     """
 
+    print("* Loading annotations.")
     annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
 
     extract_vggish_embedding = make_extract_vggish_embedding(frame_duration, hop_duration,
@@ -124,9 +126,10 @@ def extract_embeddings_vggish(annotation_path, dataset_dir, output_dir,
     row_iter = df.iterrows()
 
     if progress:
-        row_iter = tqdm(row_iter)
+        row_iter = tqdm(row_iter, total=len(df))
 
-    for row in row_iter:
+    print("* Extracting embeddings.")
+    for _, row in row_iter:
         filename = row['audio_filename']
         split_str = row['split']
         audio_path = os.path.join(dataset_dir, split_str, filename)
@@ -152,7 +155,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    extract_embeddings_vggish(annotation_dir=args.annotation_dir,
+    extract_embeddings_vggish(annotation_path=args.annotation_path,
                               dataset_dir=args.dataset_dir,
                               output_dir=args.output_dir,
                               vggish_resource_dir=args.vggish_resource_dir,
