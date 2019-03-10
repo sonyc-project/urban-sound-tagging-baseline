@@ -10,8 +10,6 @@ from vggish import vggish_input
 from vggish import vggish_postprocess
 from vggish import vggish_slim
 
-from ust_data import load_ust_data
-
 
 def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='vggish/input_features',
                                   output_op_name='vggish/embedding', embedding_size=128, resources_dir=None):
@@ -87,21 +85,23 @@ def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='v
         pass
 
 
-def extract_embeddings_vggish(dataset_dir, output_dir, exp_id, frame_duration=0.96, hop_duration=0.96,
-                              progress=True, vggish_resource_dir='/home/jtc440/dev/l3embedding/resources/vggish',
+def extract_embeddings_vggish(annotation_path, dataset_dir, output_dir,
+                              vggish_resource_dir, exp_id, frame_duration=0.96,
+                              hop_duration=0.96, progress=True,
                               vggish_embedding_size=128):
     """
     Extract embeddings for files annotated in the SONYC annotation file and save them to disk.
 
     Parameters
     ----------
+    annotation_path
     dataset_dir
     output_dir
+    vggish_resource_dir
     exp_id
     frame_duration
     hop_duration
     progress
-    vggish_resource_dir
     vggish_embedding_size
 
     Returns
@@ -109,10 +109,7 @@ def extract_embeddings_vggish(dataset_dir, output_dir, exp_id, frame_duration=0.
 
     """
 
-    annotation_path = os.path.join(dataset_dir, "annotations.csv")
-    annotation_data = load_ust_data(annotation_path)
-    file_list = list(annotation_data.keys())
-    split_str_list = [ann_list[0]['split'] for ann_list in annotation_data.values()]
+    annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
 
     extract_vggish_embedding = make_extract_vggish_embedding(frame_duration, hop_duration,
         input_op_name='vggish/input_features', output_op_name='vggish/embedding',
@@ -123,10 +120,15 @@ def extract_embeddings_vggish(dataset_dir, output_dir, exp_id, frame_duration=0.
     out_dir = os.path.join(output_dir, exp_id, 'vggish')
     os.makedirs(out_dir, exist_ok=True)
 
-    if progress:
-        file_list = tqdm(file_list)
+    df = annotation_data[['split', 'audio_filename']].drop_duplicates()
+    row_iter = df.iterrows()
 
-    for filename, split_str in zip(file_list, split_str_list):
+    if progress:
+        row_iter = tqdm(row_iter)
+
+    for row in row_iter:
+        filename = row['audio_filename']
+        split_str = row['split']
         audio_path = os.path.join(dataset_dir, split_str, filename)
         emb_path = os.path.join(out_dir, os.path.splitext(filename)[0] + '.npy.gz')
         extract_vggish_embedding.send((audio_path, emb_path))
@@ -136,11 +138,12 @@ def extract_embeddings_vggish(dataset_dir, output_dir, exp_id, frame_duration=0.
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("datadir")
-    parser.add_argument("outputfolder")
+    parser.add_argument("annotation_path")
+    parser.add_argument("dataset_dir")
+    parser.add_argument("output_dir")
+    parser.add_argument("vggish_resource_dir")
     parser.add_argument("expid")
 
-    parser.add_argument("--vggish_resource_dir")
     parser.add_argument("--vggish_embedding_size", type=int, default=128)
 
     parser.add_argument("--frame_duration", type=float, default=0.96)
@@ -149,10 +152,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    extract_embeddings_vggish(dataset_dir=args.datadir,
-                              output_dir=args.outputfolder,
-                              exp_id=args.expid,
+    extract_embeddings_vggish(annotation_dir=args.annotation_dir,
+                              dataset_dir=args.dataset_dir,
+                              output_dir=args.output_dir,
                               vggish_resource_dir=args.vggish_resource_dir,
+                              exp_id=args.expid,
                               vggish_embedding_size=args.vggish_embedding_size,
                               frame_duration=args.frame_duration,
                               hop_duration=args.hop_duration,

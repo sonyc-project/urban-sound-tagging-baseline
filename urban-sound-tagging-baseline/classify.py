@@ -5,6 +5,8 @@ import json
 import gzip
 import os
 import numpy as np
+import pandas as pd
+import oyaml
 
 import keras
 from keras.layers import Input, Dense
@@ -13,9 +15,6 @@ from keras import regularizers
 from keras.optimizers import Adam
 import keras.backend as K
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, average_precision_score, precision_score, recall_score
-
-import ust_data
 
 
 ## HELPERS
@@ -36,17 +35,83 @@ def load_embeddings(file_list, emb_dir):
 
     """
     embeddings = []
-    ignore_idxs = []
     for idx, filename in enumerate(file_list):
         emb_path = os.path.join(emb_dir, os.path.splitext(filename)[0] + '.npy.gz')
-        try:
-            with gzip.open(emb_path, 'rb') as f:
-                embeddings.append(np.load(f))
-        except:
-            embeddings.append(None)
-            ignore_idxs.append(idx)
+        with gzip.open(emb_path, 'rb') as f:
+            embeddings.append(np.load(f))
 
-    return embeddings, ignore_idxs
+    return embeddings
+
+
+def get_subset_split(annotation_data):
+    """
+    Get indices for train and validation subsets
+
+    Parameters
+    ----------
+    annotation_data
+
+    Returns
+    -------
+    train_idxs
+    valid_idxs
+
+    """
+
+    # Get the audio filenames and the splits without duplicates
+    data = annotation_data[['split', 'audio_filename']].drop_duplicates().sort_values('audio_filename')
+
+    train_idxs = []
+    valid_idxs = []
+    for idx, (_, row) in enumerate(data.iterrows()):
+        if row['split'] == 'train':
+            train_idxs.append(idx)
+        else:
+            valid_idxs.append(idx)
+
+    return np.array(train_idxs), np.array(valid_idxs)
+
+
+def get_file_targets(annotation_data, labels):
+    """
+    Get file target annotation vector for the given set of labels
+
+    Parameters
+    ----------
+    annotation_data
+    labels
+
+    Returns
+    -------
+    target_list
+
+    """
+    target_list = []
+    file_list = annotation_data['audio_filename'].unique().tolist()
+
+    for filename in file_list:
+        file_df = annotation_data[annotation_data['audio_filename'] == filename]
+        target = []
+
+        for label in labels:
+            count = 0
+
+            for _, row in file_df.iterrows():
+                if int(row['annotator_id']) == 0:
+                    # If we have a validated annotation, just use that
+                    count = row[label + '_presence']
+                    break
+                else:
+                    count += row[label + '_presence']
+
+            if count > 0:
+                target.append(1.0)
+            else:
+                target.append(0.0)
+
+        target_list.append(target)
+
+    return np.array(target_list)
 
 
 def softmax(X, theta=1.0, axis=None):
@@ -93,27 +158,6 @@ def softmax(X, theta=1.0, axis=None):
     return p
 
 
-## METRICS
-
-def binary_accuracy_round(y_true, y_pred):
-    """
-    Multi-label average accuracy, using 0.5 as the detection threshold. For use with Keras.
-
-    Parameters
-    ----------
-    y_true
-    y_pred
-
-    Returns
-    -------
-    accuracy
-
-    """
-    # TODO: Update for our modified accuracy metric
-    return K.mean(K.equal(K.round(y_true), K.round(y_pred)), axis=-1)
-
-
-
 ## MODEL CONSTRUCTION
 
 
@@ -127,6 +171,7 @@ def construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=128,
     emb_size
     num_classes
     hidden_layer_size
+    num_hidden_layers
     l2_reg
 
     Returns
@@ -156,7 +201,8 @@ def construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=128,
 
 ## DATA PREPARATION
 
-def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_list, standardize=True):
+def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
+                           target_list, standardize=True):
     """
     Prepare inputs and targets for framewise training using training and evaluation indices.
 
@@ -181,13 +227,6 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_l
     X_train = []
     y_train = []
     for idx in train_file_idxs:
-        # Skip any "other" or "unknown" examples
-        # TODO: Account for this in the loss function. We still want to train
-        # on these examples if there are complete annotations for other coarse
-        # annotations
-        if not np.any(target_list[idx]):
-            continue
-
         X_ = list(embeddings[idx])
         X_train += X_
         for _ in range(len(X_)):
@@ -223,10 +262,12 @@ def prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings, target_l
 
 ## GENERIC MODEL TRAINING
 
-def train_mlp(model, X_train, y_train, X_valid, y_valid, output_dir, loss=None, batch_size=64,
-              num_epochs=100, patience=20, learning_rate=1e-4):
+
+def train_model(model, X_train, y_train, X_valid, y_valid, output_dir,
+                loss=None, batch_size=64, num_epochs=100, patience=20,
+                learning_rate=1e-4):
     """
-    Train a MLP model with the given data.
+    Train a model with the given data.
 
     Parameters
     ----------
@@ -282,9 +323,11 @@ def train_mlp(model, X_train, y_train, X_valid, y_valid, output_dir, loss=None, 
 
 ## MODEL TRAINING
 
-def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine", batch_size=64,
-                  num_epochs=100, patience=20, learning_rate=1e-4, hidden_layer_size=128,
-                  num_hidden_layers=0, l2_reg=1e-5, standardize=True, timestamp=None):
+def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir, exp_id,
+                    label_mode="fine", batch_size=64, num_epochs=100,
+                    patience=20, learning_rate=1e-4, hidden_layer_size=128,
+                    num_hidden_layers=0, l2_reg=1e-5, standardize=True,
+                    timestamp=None):
     """
     Train and evaluate a framewise MLP model.
 
@@ -309,22 +352,29 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
     -------
 
     """
-    annotation_path = os.path.join(dataset_dir, "annotations.csv")
-    annotation_data = ust_data.load_ust_data(annotation_path)
-    file_list = list(annotation_data.keys())
-    taxonomy = ust_data.get_taxonomy(annotation_data)
 
-    fine_target_labels = [x for fine_list in taxonomy.values()
-                          for x in fine_list
-                          if x.split('_')[0].split('-')[1] != 'X']
-    full_fine_target_labels = [x for fine_list in taxonomy.values()
-                                     for x in fine_list]
-    coarse_target_labels = list(taxonomy.keys())
+    # Load annotations and taxonomy
+    print("* Loading dataset.")
+    annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
+    with open(taxonomy_path, 'r') as f:
+        taxonomy = oyaml.load(f)
+
+    file_list = annotation_data['audio_filename'].unique().tolist()
+
+    full_fine_target_labels = ["{}-{}_{}".format(coarse_id, fine_id, fine_label)
+                               for coarse_id, fine_dict in taxonomy['fine'].items()
+                               for fine_id, fine_label in fine_dict.items()]
+    fine_target_labels = [x for x in full_fine_target_labels
+                            if x.split('_')[0].split('-')[1] != 'X']
+    coarse_target_labels = ["_".join([str(k), v])
+                            for k,v in taxonomy['coarse'].items()]
+
+    print("* Prepaing training data.")
 
     # For fine, we include incomplete labels in targets for computing the loss
-    fine_target_list = ust_data.get_file_targets(annotation_data, full_fine_target_labels)
-    coarse_target_list = ust_data.get_file_targets(annotation_data, coarse_target_labels)
-    train_file_idxs, test_file_idxs = ust_data.get_subset_split(annotation_data)
+    fine_target_list = get_file_targets(annotation_data, full_fine_target_labels)
+    coarse_target_list = get_file_targets(annotation_data, coarse_target_labels)
+    train_file_idxs, test_file_idxs = get_subset_split(annotation_data)
 
     if label_mode == "fine":
         target_list = fine_target_list
@@ -337,19 +387,18 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
 
     num_classes = len(labels)
 
-    embeddings, ignore_idxs = load_embeddings(file_list, emb_dir)
+    embeddings = load_embeddings(file_list, emb_dir)
 
-    # Remove files that couldn't be loaded
-    train_file_idxs = [idx for idx in train_file_idxs if idx not in ignore_idxs]
-    test_file_idxs = [idx for idx in test_file_idxs if idx not in ignore_idxs]
-
-    X_train, y_train, X_valid, y_valid, scaler = prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
-                                                                        target_list, standardize=standardize)
+    X_train, y_train, X_valid, y_valid, scaler \
+        = prepare_framewise_data(train_file_idxs, test_file_idxs, embeddings,
+                                 target_list, standardize=standardize)
 
     _, emb_size = X_train.shape
 
-    model = construct_mlp_framewise(emb_size, num_classes, hidden_layer_size=hidden_layer_size,
-        num_hidden_layers=num_hidden_layers, l2_reg=l2_reg)
+    model = construct_mlp_framewise(emb_size, num_classes,
+                                    hidden_layer_size=hidden_layer_size,
+                                    num_hidden_layers=num_hidden_layers,
+                                    l2_reg=l2_reg)
 
     if not timestamp:
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -357,11 +406,15 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
     results_dir = os.path.join(output_dir, exp_id, timestamp)
 
     if label_mode == "fine":
-        full_coarse_to_fine_terminal_idxs = np.cumsum([len(fine_list) for fine_list in taxonomy.values()])
-        incomplete_fine_subidxs = [len(fine_list) - 1 if fine_list[-1].split('_')[0].split('-')[1] == 'X' else None for fine_list in taxonomy.values()]
-        coarse_to_fine_end_idxs = np.cumsum([len([x for x in fine_list if x.split('_')[0].split('-')[1] != 'X'])
-                                                  for fine_list in taxonomy.values()])
+        full_coarse_to_fine_terminal_idxs = np.cumsum(
+            [len(fine_dict) for fine_dict in taxonomy['fine'].values()])
+        incomplete_fine_subidxs = [len(fine_dict) - 1 if 'X' in fine_dict else None
+                                   for fine_dict in taxonomy['fine'].values()]
+        coarse_to_fine_end_idxs = np.cumsum([len(fine_dict) - 1 if 'X' in fine_dict else len(fine_dict)
+                                             for fine_dict in taxonomy['fine'].values()])
 
+        # Create loss function that only adds loss for fine labels for which
+        # the we don't have any incomplete labels
         def masked_loss(y_true, y_pred):
             loss = None
             for coarse_idx in range(len(full_coarse_to_fine_terminal_idxs)):
@@ -409,13 +462,18 @@ def train_framewise(dataset_dir, emb_dir, output_dir, exp_id, label_mode="fine",
     else:
         loss_func = None
 
-    history = train_mlp(model, X_train, y_train, X_valid, y_valid, results_dir, loss=loss_func,
-                        batch_size=batch_size, num_epochs=num_epochs,
-                        patience=patience, learning_rate=learning_rate)
+    print("* Training model.")
+    history = train_model(model, X_train, y_train, X_valid, y_valid,
+                          results_dir, loss=loss_func, batch_size=batch_size,
+                          num_epochs=num_epochs, patience=patience,
+                          learning_rate=learning_rate)
 
+    print("* Saving model predictions.")
     results = {}
-    results['train'] = predict_framewise(embeddings, train_file_idxs, model, scaler=scaler)
-    results['test'] = predict_framewise(embeddings, test_file_idxs, model, scaler=scaler)
+    results['train'] = predict_framewise(embeddings, train_file_idxs, model,
+                                         scaler=scaler)
+    results['test'] = predict_framewise(embeddings, test_file_idxs, model,
+                                        scaler=scaler)
     results['train_history'] = history.history
 
     results_path = os.path.join(results_dir, "results.json")
@@ -471,12 +529,35 @@ def predict_framewise(embeddings, test_file_idxs, model, scaler=None):
 
 def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
                          aggregation_type, label_mode, taxonomy):
+    """
+    Write the output file containing model predictions
+
+    Parameters
+    ----------
+    y_pred
+    test_file_idxs
+    results_dir
+    file_list
+    aggregation_type
+    label_mode
+    taxonomy
+
+    Returns
+    -------
+
+    """
     output_path = os.path.join(results_dir, "output_{}.csv".format(aggregation_type))
     test_file_list = [file_list[idx] for idx in test_file_idxs]
 
-    full_fine_target_labels = [x for fine_list in taxonomy.values()
-                                     for x in fine_list]
-    coarse_target_labels = list(taxonomy.keys())
+    coarse_fine_labels = [["{}-{}_{}".format(coarse_id, fine_id, fine_label)
+                             for fine_id, fine_label in fine_dict.items()]
+                           for coarse_id, fine_dict in taxonomy['fine'].items()]
+
+    full_fine_target_labels = [fine_label for fine_list in coarse_fine_labels
+                                          for fine_label in fine_list]
+    coarse_target_labels = ["_".join([str(k), v])
+                            for k,v in taxonomy['coarse'].items()]
+
 
     with open(output_path, 'w') as f:
         csvwriter = csv.writer(f)
@@ -494,20 +575,21 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
                 coarse_values = [0 for _ in range(len(coarse_target_labels))]
                 coarse_idx = 0
                 fine_idx = 0
-                for coarse_label in coarse_target_labels:
-                    fine_label_list = taxonomy[coarse_label]
+                for coarse_label, fine_label_list in zip(coarse_target_labels,
+                                                         coarse_fine_labels):
                     for fine_label in fine_label_list:
                         if 'X' in fine_label.split('_')[0].split('-')[1]:
-                            # Put a 0 for other, since the baseline doesn't account
+                            # Put a 0 for other, since the baseline doesn't
                             # account for it
-                            fine_values.append(0)
+                            fine_values.append(0.0)
                             continue
 
                         # Append the next fine prediction
                         fine_values.append(y[fine_idx])
 
-                        # Add coarse level labels corresponding to fine level predictions
-                        # Obtain by taking the maximum from the fine level labels
+                        # Add coarse level labels corresponding to fine level
+                        # predictions. Obtain by taking the maximum from the
+                        # fine level labels
                         coarse_values[coarse_idx] = max(coarse_values[coarse_idx],
                                                         y[fine_idx])
                         fine_idx += 1
@@ -517,7 +599,7 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
 
             else:
                 # Add placeholder values for fine level
-                row += [-1 for _ in range(len(fine_target_labels))]
+                row += [-1 for _ in range(len(full_fine_target_labels))]
                 # Add coarse level labels
                 row += list(y)
 
@@ -526,14 +608,15 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset_dir")
+    parser.add_argument("annotation_path")
+    parser.add_argument("taxonomy_path")
     parser.add_argument("emb_dir", type=str)
     parser.add_argument("output_dir", type=str)
     parser.add_argument("exp_id", type=str)
 
     parser.add_argument("--hidden_layer_size", type=int, default=128)
     parser.add_argument("--num_hidden_layers", type=int, default=0)
-    parser.add_argument("--learning_rate", type=float, default=1e-4)
+    parser.add_argument("--learning_rate", type=float, default=1e-3)
     parser.add_argument("--l2_reg", type=float, default=1e-5)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--num_epochs", type=int, default=100)
@@ -553,7 +636,8 @@ if __name__ == '__main__':
     with open(kwarg_file, 'w') as f:
         json.dump(vars(args), f, indent=2)
 
-    train_framewise(args.dataset_dir,
+    train_framewise(args.annotation_path,
+                    args.taxonomy_path,
                     args.emb_dir,
                     args.output_dir,
                     args.exp_id,
