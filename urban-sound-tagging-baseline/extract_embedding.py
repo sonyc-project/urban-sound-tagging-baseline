@@ -87,7 +87,7 @@ def make_extract_vggish_embedding(frame_duration, hop_duration, input_op_name='v
 
 
 def extract_embeddings_vggish(annotation_path, dataset_dir, output_dir,
-                              vggish_resource_dir, exp_id, frame_duration=0.96,
+                              vggish_resource_dir, frame_duration=0.96,
                               hop_duration=0.96, progress=True,
                               vggish_embedding_size=128):
     """
@@ -99,7 +99,6 @@ def extract_embeddings_vggish(annotation_path, dataset_dir, output_dir,
     dataset_dir
     output_dir
     vggish_resource_dir
-    exp_id
     frame_duration
     hop_duration
     progress
@@ -119,7 +118,7 @@ def extract_embeddings_vggish(annotation_path, dataset_dir, output_dir,
     # Start coroutine
     next(extract_vggish_embedding)
 
-    out_dir = os.path.join(output_dir, exp_id, 'vggish')
+    out_dir = os.path.join(output_dir, 'vggish')
     os.makedirs(out_dir, exist_ok=True)
 
     df = annotation_data[['split', 'audio_filename']].drop_duplicates()
@@ -145,7 +144,6 @@ if __name__ == "__main__":
     parser.add_argument("dataset_dir")
     parser.add_argument("output_dir")
     parser.add_argument("vggish_resource_dir")
-    parser.add_argument("expid")
 
     parser.add_argument("--vggish_embedding_size", type=int, default=128)
 
@@ -159,7 +157,6 @@ if __name__ == "__main__":
                               dataset_dir=args.dataset_dir,
                               output_dir=args.output_dir,
                               vggish_resource_dir=args.vggish_resource_dir,
-                              exp_id=args.expid,
                               vggish_embedding_size=args.vggish_embedding_size,
                               frame_duration=args.frame_duration,
                               hop_duration=args.hop_duration,

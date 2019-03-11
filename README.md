@@ -17,13 +17,13 @@ $ curl -O https://storage.googleapis.com/audioset/vggish_model.ckpt
 $ curl -O https://storage.googleapis.com/audioset/vggish_pca_params.npz
 $ cd ../
 # Extract embeddings
-$ python extract_embedding.py <dataset_dir>/annotations.csv <dataset_dir> ./features vggish_model baseline
+$ python extract_embedding.py <dataset_dir>/annotations.csv <dataset_dir> ./features vggish_model
 # Train fine-level model and produce predictions
-$ python classify.py <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml ./features ./output baseline_fine --label_mode fine
+$ python classify.py <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml ./features/vggish ./output baseline_fine --label_mode fine
 # Evaluate model based on AUPRC-like metric
 $ python evaluate_predictions.py ./output/baseline_fine/<timestamp>/output_mean.csv <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml
 # Train coarse-level model and produce predictions
-$ python classify.py <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml ./features ./output baseline_fine --label_mode coarse
+$ python classify.py <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml ./features/vggish ./output baseline_fine --label_mode coarse
 # Evaluate model based on AUPRC-like metric
 $ python evaluate_predictions.py ./output/baseline_coarse/<timestamp>/output_mean.csv <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml
 ```
