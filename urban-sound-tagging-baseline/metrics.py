@@ -375,7 +375,7 @@ def micro_averaged_auprc(df_dict, return_df=False):
     from a dictionary of class-wise DataFrames obtained via `evaluate`.
     """
     # List all unique values of threshold.
-    thresholds = np.unique(x["threshold"] for x in df_dict.values())
+    thresholds = np.unique(np.array([x["threshold"] for x in df_dict.values()]))
 
     # Count number of unique thresholds.
     n_thresholds = len(thresholds)
