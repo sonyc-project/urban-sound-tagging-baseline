@@ -624,7 +624,6 @@ if __name__ == '__main__':
     parser.add_argument("--num_epochs", type=int, default=100)
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--no_standardize", action='store_true')
-    parser.add_argument("--num_classes", type=int, default=10)
     parser.add_argument("--label_mode", type=str, choices=["fine", "coarse"],
                         default='fine')
 
