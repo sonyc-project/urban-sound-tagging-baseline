@@ -1,0 +1,8 @@
+numpy==1.16.2
+keras==2.2.4
+tensorflow==1.13.1
+scikit-learn==0.20.3
+oyaml==0.7
+tqdm==4.31.1
+pandas==0.24.1
+resampy==0.2.1
