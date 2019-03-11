@@ -395,7 +395,7 @@ def micro_averaged_auprc(df_dict, return_df=False):
         for coarse_id in df_dict.keys():
 
             # Find last row above threshold.
-            row = df_dict[coarse_id][df_dict[coarse_id] > threshold].iloc[-1]
+            row = df_dict[coarse_id][df_dict[coarse_id]["threshold"] >= threshold].iloc[-1]
 
             # Increment TP, FP, and FN.
             global_TP += row["TP"]
