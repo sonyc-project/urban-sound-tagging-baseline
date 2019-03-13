@@ -283,7 +283,9 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         restricted_gt_df = gt_df[columns]
 
         # Aggregate all prediction values into a "raveled" vector.
-        thresholds = np.ravel(restricted_pred_df.values)
+        # We make an explicit numpy, so that the original DataFrame
+        # is left unchanged.
+        thresholds = np.ravel(np.copy(restricted_pred_df.values))
 
         # Sort in place.
         thresholds.sort()
