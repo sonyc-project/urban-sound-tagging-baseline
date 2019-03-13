@@ -283,18 +283,25 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         restricted_gt_df = gt_df[columns]
 
         # Aggregate all prediction values into a "raveled" vector.
-        thresholds = np.ravel(restricted_pred_df.values)
+        confidences = np.ravel(restricted_pred_df.values)
 
         # Sort in place.
-        thresholds.sort()
+        confidences.sort()
 
-        # Skip very low values of the threshold.
+        # Skip very low values.
         # This is to speed up the computation of the precision-recall curve
         # in the low-precision regime.
-        thresholds = thresholds[np.searchsorted(thresholds, min_threshold):]
+        confidences = confidences[np.searchsorted(confidences, min_threshold):]
 
-        # Restrict to unique elements.
+        # List thresholds by restricting observed confidences to unique elements.
         thresholds = np.unique(thresholds)
+
+        # Append a 1 to the list of thresholds.
+        # This will cause TP and FP to fall down to zero, but FN will be nonzero.
+        # This is useful for estimating the low-recall regime, and it
+        # facilitates micro-averaged AUPRC because if provides an upper bound
+        # on valid thresholds across coarse categories.
+        thresholds = np.append(thresholds, 1.0)
 
         # Count number of thresholds.
         n_thresholds = len(thresholds)
@@ -374,8 +381,9 @@ def micro_averaged_auprc(df_dict, return_df=False):
     Compute micro-averaged area under the precision-recall curve (AUPRC)
     from a dictionary of class-wise DataFrames obtained via `evaluate`.
     """
-    # List all unique values of threshold.
-    thresholds = np.unique(np.hstack([x["threshold"] for x in df_dict.values()]))
+    # List all unique values of thresholds across coarse categories.
+    thresholds = np.unique(
+        np.hstack([x["threshold"] for x in df_dict.values()]))
 
     # Count number of unique thresholds.
     n_thresholds = len(thresholds)
@@ -395,7 +403,9 @@ def micro_averaged_auprc(df_dict, return_df=False):
         for coarse_id in df_dict.keys():
 
             # Find last row above threshold.
-            row = df_dict[coarse_id][df_dict[coarse_id]["threshold"] >= threshold].iloc[-1]
+            coarse_df = df_dict[coarse_id]
+            coarse_thresholds = coarse_df["threshold"]
+            row = coarse_df[coarse_thresholds>=threshold].iloc[-1]
 
             # Increment TP, FP, and FN.
             global_TP += row["TP"]
