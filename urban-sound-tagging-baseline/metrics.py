@@ -293,7 +293,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         # Skip very low values.
         # This is to speed up the computation of the precision-recall curve
         # in the low-precision regime.
-        thresholds = confidences[np.searchsorted(confidences, min_threshold):]
+        thresholds = confidences[np.searchsorted(thresholds, min_threshold):]
 
         # List thresholds by restricting observed confidences to unique elements.
         thresholds = np.unique(thresholds)
