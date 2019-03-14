@@ -16,14 +16,25 @@ $ cd vggish_model
 $ curl -O https://storage.googleapis.com/audioset/vggish_model.ckpt
 $ curl -O https://storage.googleapis.com/audioset/vggish_pca_params.npz
 $ cd ../
+# Download dataset
+$ mkdir sonyc-ust
+$ cd sonyc-ust
+$ wget https://zenodo.org/record/2590742/files/annotations.csv
+$ wget https://zenodo.org/record/2590742/files/audio.tar.gz
+$ wget https://zenodo.org/record/2590742/files/dcase-ust-taxonomy.yaml
+$ wget https://zenodo.org/record/2590742/files/README.md
+# Decompress audio
+$ tar xf audio.tar.gz
+$ rm audio.tar.gz
+$ cd ../
 # Extract embeddings
-$ python extract_embedding.py <dataset_dir>/annotations.csv <dataset_dir> ./features vggish_model
+$ python extract_embedding.py ./sonyc-ust/annotations.csv ./sonyc-ust ./features vggish_model
 # Train fine-level model and produce predictions
-$ python classify.py <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml ./features/vggish ./output baseline_fine --label_mode fine
+$ python classify.py ./sonyc-ust/annotations.csv ./sonyc-ust/dcase-ust-taxonomy.yaml ./features/vggish ./output baseline_fine --label_mode fine
 # Evaluate model based on AUPRC-like metric
-$ python evaluate_predictions.py ./output/baseline_fine/<timestamp>/output_mean.csv <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml
+$ python evaluate_predictions.py ./output/baseline_fine/<timestamp>/output_mean.csv ./sonyc-ust/annotations.csv ./sonyc-ust/dcase-ust-taxonomy.yaml
 # Train coarse-level model and produce predictions
-$ python classify.py <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml ./features/vggish ./output baseline_fine --label_mode coarse
+$ python classify.py ./sonyc-ust/annotations.csv ./sonyc-ust/dcase-ust-taxonomy.yaml ./features/vggish ./output baseline_fine --label_mode coarse
 # Evaluate model based on AUPRC-like metric
-$ python evaluate_predictions.py ./output/baseline_coarse/<timestamp>/output_mean.csv <dataset_dir>/annotations.csv <dataset_dir>/dcase-ust-taxonomy.yaml
+$ python evaluate_predictions.py ./output/baseline_coarse/<timestamp>/output_mean.csv ./sonyc-ust/annotations.csv ./sonyc-ust/dcase-ust-taxonomy.yaml
 ```
