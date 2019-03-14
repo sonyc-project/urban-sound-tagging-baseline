@@ -6,7 +6,7 @@ import gzip
 import os
 import numpy as np
 import pandas as pd
-import oyaml
+import oyaml as yaml
 
 import keras
 from keras.layers import Input, Dense
@@ -359,7 +359,7 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir, exp_id,
     print("* Loading dataset.")
     annotation_data = pd.read_csv(annotation_path).sort_values('audio_filename')
     with open(taxonomy_path, 'r') as f:
-        taxonomy = oyaml.load(f)
+        taxonomy = yaml.load(f, Loader=yaml.Loader)
 
     file_list = annotation_data['audio_filename'].unique().tolist()
 
