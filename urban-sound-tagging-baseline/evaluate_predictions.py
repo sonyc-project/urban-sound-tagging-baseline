@@ -26,9 +26,14 @@ if __name__ == '__main__':
                            mode)
 
         micro_auprc = micro_averaged_auprc(df_dict)
-        macro_auprc = macro_averaged_auprc(df_dict)
+        macro_auprc, class_auprc = macro_averaged_auprc(df_dict, return_classwise=True)
 
         print("{} level evaluation:".format(mode.capitalize()))
         print("======================")
         print(" * Micro AUPRC: {}".format(micro_auprc))
         print(" * Macro AUPRC: {}".format(macro_auprc))
+        print(" * Coarse Tag AUPRC:")
+
+        for coarse_id, auprc in class_auprc.items():
+            print("      - {}: {}".format(coarse_id, auprc))
+
