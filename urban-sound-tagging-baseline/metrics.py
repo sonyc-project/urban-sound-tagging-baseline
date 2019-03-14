@@ -288,12 +288,12 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         thresholds = np.ravel(np.copy(restricted_pred_df.values))
 
         # Sort in place.
-        confidences.sort()
+        thresholds.sort()
 
         # Skip very low values.
         # This is to speed up the computation of the precision-recall curve
         # in the low-precision regime.
-        confidences = confidences[np.searchsorted(confidences, min_threshold):]
+        thresholds = confidences[np.searchsorted(confidences, min_threshold):]
 
         # List thresholds by restricting observed confidences to unique elements.
         thresholds = np.unique(thresholds)
