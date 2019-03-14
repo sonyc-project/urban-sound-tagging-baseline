@@ -461,16 +461,17 @@ def micro_averaged_auprc(df_dict, return_df=False):
 
 
 
-def macro_averaged_auprc(df_dict):
+def macro_averaged_auprc(df_dict, return_classwise=False):
     """
     Compute macro-averaged area under the precision-recall curve (AUPRC)
     from a dictionary of class-wise DataFrames obtaines via `evaluate`.
     """
     # Initialize list of category-wise AUPRCs.
     auprcs = []
+    coarse_id_list = df_dict.keys()
 
     # Loop over coarse categories.
-    for coarse_id in df_dict.keys():
+    for coarse_id in coarse_id_list:
         # Load precisions and recalls.
         # NB: we prepend a (1,0) and append a (0,1) to the curve so that the
         # curve reaches the top-left and bottom-right quadrants of the
@@ -483,7 +484,14 @@ def macro_averaged_auprc(df_dict):
         auprcs.append(auc(recalls, precisions))
 
     # Average AUPRCs across coarse categories with uniform weighting.
-    return np.mean(auprcs)
+    mean_auprc = np.mean(auprcs)
+
+    if return_classwise:
+        class_auprc = {coarse_id: auprc
+                       for coarse_id, auprc in zip(coarse_id_list, auprcs)}
+        return mean_auprc, class_auprc
+    else:
+        return mean_auprc
 
 
 def parse_coarse_prediction(pred_csv_path, yaml_path):
