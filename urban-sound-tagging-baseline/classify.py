@@ -601,7 +601,7 @@ def generate_output_file(y_pred, test_file_idxs, results_dir, file_list,
 
             else:
                 # Add placeholder values for fine level
-                row += [-1 for _ in range(len(full_fine_target_labels))]
+                row += [0.0 for _ in range(len(full_fine_target_labels))]
                 # Add coarse level labels
                 row += list(y)
 
