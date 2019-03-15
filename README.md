@@ -157,6 +157,7 @@ For inference, we predict tags at the frame level and simply take the average of
 * Micro AUPRC: 0.5501421905916288
 * Macro AUPRC: 0.4267124495280913
 * Coarse Tag AUPRC:
+
     | Coarse Tag Name | AUPRC |
     | :--- | :--- |
     | engine | 0.7123158311528364 |
