@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Activate environment
+source activate sonyc-ust
+
 # Extract embeddings
 pushd urban-sound-tagging-baseline
 python extract_embedding.py $SONYC_UST_PATH/data/annotations.csv $SONYC_UST_PATH/data $SONYC_UST_PATH/features $SONYC_UST_PATH/vggish

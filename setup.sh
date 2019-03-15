@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Create environment
-conda create -n ust python=3.6 -y
-source activate ust
+conda create -n sonyc-ust python=3.6 -y
+source activate sonyc-ust
 
 # Install dependencies
 yes | pip install -r requirements.txt

@@ -33,8 +33,8 @@ export SONYC_UST_PATH=~/sonyc-ust
 Then set up your Python environment:
 
 ```shell
-conda create -n ust python=3.6
-source activate ust
+conda create -n sonyc-ust python=3.6
+source activate sonyc-ust
 pip install -r requirements.txt
 ```
 
@@ -77,8 +77,13 @@ export SONYC_UST_PATH=~/sonyc-ust
 
 ### Baseline Guide
 
+First, activate your conda environment (if it isn't already activated).
 
-First, set up some environment variables to make things easier. Feel free to change these to a directory that works better for you.
+```shell
+source activate sonyc-ust
+```
+
+Then, set up some environment variables to make things easier. Feel free to change these to a directory that works better for you.
 
 ```shell
 export SONYC_UST_PATH=~/sonyc-ust
