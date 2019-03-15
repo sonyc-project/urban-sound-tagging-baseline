@@ -136,3 +136,16 @@ For inference, we predict tags at the frame level and simply take the average of
 
 ## Metrics Description
 
+### Fine AUPRC
+
+![Boolean circuit for computing false negatives for fine predictions.](./figs/fine_fn.png)
+
+![Boolean circuit for computing false positives for fine predictions.](./figs/fine_fp.png)
+
+![Boolean circuit for computing true positives for fine predictions.](./figs/fine_tp.png)
+
+### Coarse AUPRC
+
+![Boolean circuit for computing false negatives for coarse predictions.](./figs/coarse_fn.png)
+![Boolean circuit for computing false positives for coarse predictions.](./figs/coarse_fp.png)
+![Boolean circuit for computing true positives for coarse predictions.](./figs/coarse_tp.png)
