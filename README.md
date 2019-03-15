@@ -157,7 +157,8 @@ For inference, we predict tags at the frame level and simply take the average of
 * Micro AUPRC: 0.5501421905916288
 * Macro AUPRC: 0.4267124495280913
 * Coarse Tag AUPRC:
-
+    | Tag Name | AUPRC |
+    | :--- | :--- |
     | engine | 0.7123158311528364 |
     | machinery-impact | 0.1977375098839912 |
     | non-machinery-impact | 0.36390229164883725 |
@@ -173,6 +174,8 @@ For inference, we predict tags at the frame level and simply take the average of
 * Macro AUPRC: 0.529538808315017
 * Coarse Tag AUPRC:
 
+    | Tag Name | AUPRC |
+    | :--- | :--- |
     | engine | 0.8594182260805483 |
     | machinery-impact | 0.28421566934051423 |
     | non-machinery-impact | 0.36390229164883725 |
@@ -191,6 +194,8 @@ For inference, we predict tags at the frame level and simply take the average of
 * Macro AUPRC: 0.5424039260371887
 * Coarse Tag AUPRC:
 
+    | Tag Name | AUPRC |
+    | :--- | :--- |
     | engine | 0.8553324507222382 |
     | machinery-impact | 0.3595472135240384 |
     | non-machinery-impact | 0.3605524814511269 |
