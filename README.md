@@ -157,28 +157,30 @@ For inference, we predict tags at the frame level and simply take the average of
 * Micro AUPRC: 0.5501421905916288
 * Macro AUPRC: 0.4267124495280913
 * Coarse Tag AUPRC:
-    * engine: 0.7123158311528364
-    * machinery-impact: 0.1977375098839912
-    * non-machinery-impact: 0.36390229164883725
-    * powered-saw: 0.3806229440451203
-    * alert-signal: 0.6359763541297692
-    * music: 0.21434381793269788
-    * human-voice: 0.8797772260748513
-    * dog: 0.029023621356626984
+
+    | engine | 0.7123158311528364 |
+    | machinery-impact | 0.1977375098839912 |
+    | non-machinery-impact | 0.36390229164883725 |
+    | powered-saw | 0.3806229440451203 |
+    | alert-signal | 0.6359763541297692 |
+    | music | 0.21434381793269788 |
+    | human-voice | 0.8797772260748513 |
+    | dog | 0.029023621356626984 |
 
 #### Coarse-level evaluation:
 
 * Micro AUPRC: 0.6129494486332887
 * Macro AUPRC: 0.529538808315017
 * Coarse Tag AUPRC:
-    * engine: 0.8594182260805483
-    * machinery-impact: 0.28421566934051423
-    * non-machinery-impact: 0.36390229164883725
-    * powered-saw: 0.7213513517777008
-    * alert-signal: 0.7538140209927924
-    * music: 0.28117173365709297
-    * human-voice: 0.9434135516660226
-    * dog: 0.029023621356626984
+
+    | engine | 0.8594182260805483 |
+    | machinery-impact | 0.28421566934051423 |
+    | non-machinery-impact | 0.36390229164883725 |
+    | powered-saw | 0.7213513517777008 |
+    | alert-signal | 0.7538140209927924 |
+    | music | 0.28117173365709297 |
+    | human-voice | 0.9434135516660226 |
+    | dog | 0.029023621356626984 |
 
 
 ### Coarse-level model
@@ -188,11 +190,12 @@ For inference, we predict tags at the frame level and simply take the average of
 * Micro AUPRC: 0.6065255442848804
 * Macro AUPRC: 0.5424039260371887
 * Coarse Tag AUPRC:
-    * engine: 0.8553324507222382
-    * machinery-impact: 0.3595472135240384
-    * non-machinery-impact: 0.3605524814511269
-    * powered-saw: 0.6769735915171646
-    * alert-signal: 0.8127157226473527
-    * music: 0.30084627536662073
-    * human-voice: 0.9451725429628454
-    * dog: 0.028091130106122388 
+
+    | engine | 0.8553324507222382 |
+    | machinery-impact | 0.3595472135240384 |
+    | non-machinery-impact | 0.3605524814511269 |
+    | powered-saw | 0.6769735915171646 |
+    | alert-signal | 0.8127157226473527 |
+    | music | 0.30084627536662073 |
+    | human-voice | 0.9451725429628454 |
+    | dog | 0.028091130106122388  |
