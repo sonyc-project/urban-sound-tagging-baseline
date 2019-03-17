@@ -371,7 +371,7 @@ def train_framewise(annotation_path, taxonomy_path, emb_dir, output_dir, exp_id,
     coarse_target_labels = ["_".join([str(k), v])
                             for k,v in taxonomy['coarse'].items()]
 
-    print("* Prepaing training data.")
+    print("* Preparing training data.")
 
     # For fine, we include incomplete labels in targets for computing the loss
     fine_target_list = get_file_targets(annotation_data, full_fine_target_labels)
