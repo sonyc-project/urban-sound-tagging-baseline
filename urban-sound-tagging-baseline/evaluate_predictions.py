@@ -25,13 +25,17 @@ if __name__ == '__main__':
                            args.yaml_path,
                            mode)
 
-        micro_auprc = micro_averaged_auprc(df_dict)
+        micro_auprc, eval_df = micro_averaged_auprc(df_dict, return_df=True)
         macro_auprc, class_auprc = macro_averaged_auprc(df_dict, return_classwise=True)
+
+        # Get index of first threshold that is at least 0.5
+        thresh_0pt5_idx = (eval_df['threshold'] >= 0.5).nonzero()[0][0]
 
         print("{} level evaluation:".format(mode.capitalize()))
         print("======================")
-        print(" * Micro AUPRC: {}".format(micro_auprc))
-        print(" * Macro AUPRC: {}".format(macro_auprc))
+        print(" * Micro AUPRC:           {}".format(micro_auprc))
+        print(" * Micro F1-score (@0.5): {}".format(eval_df["F"][thresh_0pt5_idx]))
+        print(" * Macro AUPRC:           {}".format(macro_auprc))
         print(" * Coarse Tag AUPRC:")
 
         for coarse_id, auprc in class_auprc.items():
