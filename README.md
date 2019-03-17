@@ -1,5 +1,7 @@
 # DCASE 2019 Challenge: Task 5 - Urban Sound Tagging
 
+This repository contains code to reproduce the baseline results and evaluate system outputs for [Task 5 (Urban Sound Tagging)](http://dcase.community/challenge2019/task-urban-sound-tagging) of the the [DCASE 2019 Challenge](http://dcase.community/challenge2019). We encourage participants to use this code as a starting point for manipulating the dataset and for evaluating their system outputs.
+
 ## Installation
 You'll need [Python 3](https://www.python.org/download/releases/3.0/) and [Anaconda](https://www.anaconda.com/distribution/) installed, and will need a bash terminal environment.
 
