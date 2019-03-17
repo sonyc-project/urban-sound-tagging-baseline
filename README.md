@@ -184,6 +184,7 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
 #### Fine-level evaluation:
 
 * Micro AUPRC: 0.5501421905916288
+* Micro F1-Score (@0.5): 0.09577387486278813
 * Macro AUPRC: 0.4267124495280913
 * Coarse Tag AUPRC:
 
@@ -201,6 +202,7 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
 #### Coarse-level evaluation:
 
 * Micro AUPRC: 0.6129494486332887
+* Micro F1-score (@0.5): 0.18859994746519568
 * Macro AUPRC: 0.529538808315017
 * Coarse Tag AUPRC:
 
@@ -221,6 +223,7 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
 #### Coarse-level evaluation:
 
 * Micro AUPRC: 0.6065255442848804
+* Micro F1-score (@0.5): 0.17652811735941318
 * Macro AUPRC: 0.5424039260371887
 * Coarse Tag AUPRC:
 
