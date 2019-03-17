@@ -140,7 +140,31 @@ For inference, we predict tags at the frame level and simply take the average of
 
 ## Metrics Description
 
-### Fine AUPRC
+The Urban Sound Tagging challenge is a task of multilabel classification. To evaluate and rank participants, we ask them to submit a CSV file following a similar layout as the publicly available CSV file of the development set: in it, each row should represent a different ten-second snippet, and each column should represent an urban sound tag.
+
+The area under the precision-recall curve (AUPRC) is the classification metric that we employ to rank participants. To compute this curve, we threshold the confidence of every tag in every snippet by some fixed threshold tau, thus resulting in a one-hot encoding of predicted tags. Then, we count the total number of true positives (TP), false positives (FP), and false negatives (FN) between prediction and consensus ground truth over the entire evaluation dataset.
+
+The Urban Sound Tagging challenge provides two leaderboards of participants, according to two distinct metric: fine-grained AUPRC and coarse-grained AUPRC. In each of the two level of granularity, we vary tau between 0 and 1 and compute TP, FP, and FN for each coarse category. Then, we compute micro-averaged precision P = TP / (TP + FP) and recall R = TP / (TP + TN), giving an equal importance to every sample. We repeat the same operation for all values of tau in the interval [0, 1] that result in different values of P and R. Lastly, we use the trapezoidal rule to estimate the AUPRC.
+
+As an example, Figure 2 illustrates a Boolean circuit for the computation of TP, FP, and FN at the coarse level of granularity, in the coarse category of engines. This coarse category contains three complete fine-level tags: small engine, medium engine, and large engine. In addition, it also contains one incomplete fine-level tag: namely, all engines of uncertain size. By definition, this incomplete fine-level tag does not specify a precise size of engine. It does not specify whether one or multiple sizes of engines are present in the scene. However, this distinction is not relevant to the coarse-level leaderboard, in which all sizes of engines, be them known or unknown, get aggregated into a single coarse-level tag. Therefore, evaluating a system for urban sound tagging under a coarse level of granularity is relatively straightforward. First, we apply an exclusive disjunction ("OR" gate) to the predicted fine tags in each coarse category, and another exclusive disjunction to the ground truth fine tags in the same coarse category. Such disjunctions include the incomplete fine tag. This results in a coarsened prediction as well as a coarsened ground truth in label space. Then, we compare the coarsened prediction with the coarsened ground truth by means of a binary conjunction ("AND" gate). If this disjunction returns the value "true", then the coarse-level prediction is a true positive for the coarse category at hand. Likewise, we negate the prediction (resp. the ground truth) before applying the disjunction to compute a boolean flag indicating the presence of a false negative (resp. false positive).
+
+
+### Figure 2
+
+![Boolean circuit for computing false negatives for coarse predictions.](./figs/coarse_fn.png)
+![Boolean circuit for computing false positives for coarse predictions.](./figs/coarse_fp.png)
+![Boolean circuit for computing true positives for coarse predictions.](./figs/coarse_tp.png)
+
+> *Boolean circuits for computing coarse-grained multilabel detection metrics in the coarse category of engines, in the presence of potentially incomplete ground truth. Rectangular and round boxes respectively ground truth tags and predicted tags. Boolean truth encodes the presence of a tag.*
+
+For samples with complete ground truth (i.e., in the absence of the incomplete fine tag in the ground truth for the coarse category at hand), evaluating urban sound tagging at a fine level of granularity is also relatively straightforward. Indeed, for samples with complete ground truth, the computation of TP, FP, and FN amounts to pairwise conjunctions between predicted fine tags and corresponding ground truth fine tags, without any coarsening. Each fine tag produces either one TP (if it is present and predicted), one FP (if it it absent yet predicted), or one FN (if it is absent yet not predicted). Then, we apply one-hot integer encoding to these boolean values, and sum them up at the level of coarse categories before micro-averaging across coarse categories over the entire evaluation dataset. In this case, the sum (TP+FP+FN) is equal to the number of tags in the fine-grained taxonomy, i.e. 23. Furthermore, the sum (TP+FN) is equal to the number of truly present tags in the sample at hand.
+
+The situation becomes considerably more complex when the incomplete fine tag is present in the ground truth, because this presence hinders the possibility of precisely counting the number of false alarms in the coarse category at hand. We propose a pragmatic solution to this problem, which is illustrated in Figure 3. The guiding idea behind our solution is to evaluate the prediction at the fine level only when possible, and fall back to the coarse level if necessary.
+
+For example, if a small engine is present in the ground truth and absent in the prediction, then it's a true positive in the coarse-grained sense, but a false negative in the fine-grained sense, even in the presence of incomplete ground truth. However, if a small engine is absent in the ground truth and present in the prediction, then the outcome of the evaluation will depend on the completeness of the ground truth for the coarse category of engines. If this coarse category is complete (i.e. if the tag "engine of uncertain size" is absent from the ground truth), then we may evaluate the small engine tag at the fine level, and count it as a false positive. Conversely, if the coarse category of engines is incomplete (i.e. the tag "engine of uncertain size" is present in the ground truth), then we fall back to coarse-level evaluation for the sample at hand, and count the small engine prediction as a true positive, in aggregation with potential predictions of medium engines and large engines.
+
+
+### Figure 3
 
 ![Boolean circuit for computing false negatives for fine predictions.](./figs/fine_fn.png)
 
@@ -148,11 +172,9 @@ For inference, we predict tags at the frame level and simply take the average of
 
 ![Boolean circuit for computing true positives for fine predictions.](./figs/fine_tp.png)
 
-### Coarse AUPRC
+> *Boolean circuits for computing fine-grained multilabel detection metrics in the coarse category of engines, in the presence of potentially incomplete ground truth. Rectangular and round boxes respectively ground truth tags and predicted tags. Boolean truth encodes the presence of a tag.*
 
-![Boolean circuit for computing false negatives for coarse predictions.](./figs/coarse_fn.png)
-![Boolean circuit for computing false positives for coarse predictions.](./figs/coarse_fp.png)
-![Boolean circuit for computing true positives for coarse predictions.](./figs/coarse_tp.png)
+As a secondary metric, we report the micro-averaged F-score of the system, after fixing the value of the threshold to 0.5. This score is the harmonic mean between precision and recall: F = 2*P*R / (P + R). We only provide the F-sore metric for purposes of post hoc error analysis and do not use it at the time of producing the official leaderboard.
 
 
 ## Baseline Results
