@@ -295,15 +295,15 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         # in the low-precision regime.
         thresholds = thresholds[np.searchsorted(thresholds, min_threshold):]
 
-        # List thresholds by restricting observed confidences to unique elements.
-        thresholds = np.unique(thresholds)
-
         # Append a 1 to the list of thresholds.
         # This will cause TP and FP to fall down to zero, but FN will be nonzero.
         # This is useful for estimating the low-recall regime, and it
         # facilitates micro-averaged AUPRC because if provides an upper bound
         # on valid thresholds across coarse categories.
         thresholds = np.append(thresholds, 1.0)
+
+        # List thresholds by restricting observed confidences to unique elements.
+        thresholds = np.unique(thresholds)[::-1]
 
         # Count number of thresholds.
         n_thresholds = len(thresholds)
@@ -320,7 +320,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
             is_true_incomplete = gt_df[incomplete_tag].values
 
             # Loop over thresholds in a decreasing order.
-            for i, threshold in enumerate(reversed(thresholds)):
+            for i, threshold in enumerate(thresholds):
                 # Threshold prediction for complete tag.
                 Y_pred = restricted_pred_df.values > threshold
 
@@ -338,7 +338,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
             Y_true = restricted_gt_df.values
 
             # Loop over thresholds in a decreasing order.
-            for i, threshold in enumerate(reversed(thresholds)):
+            for i, threshold in enumerate(thresholds):
                 # Threshold prediction.
                 Y_pred = restricted_pred_df.values > threshold
 
