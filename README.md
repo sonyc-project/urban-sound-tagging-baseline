@@ -183,57 +183,59 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
 
 #### Fine-level evaluation:
 
-* Micro AUPRC: 0.5501421905916288
-* Micro F1-Score (@0.5): 0.09577387486278813
-* Macro AUPRC: 0.4267124495280913
-* Coarse Tag AUPRC:
+* Micro AUPRC: 0.6717253550113078                        
+* Micro F1-Score (@0.5): 0.5015353121801432              
+* Macro AUPRC: 0.427463730110938                         
+* Coarse Tag AUPRC:                                      
+                                                         
+    | Coarse Tag Name | AUPRC |                   
+    | :--- | :--- |                                      
+    | engine | 0.7122944027927718 |               
+    | machinery-impact | 0.19788462073882798 |    
+    | non-machinery-impact | 0.36403054299960413 |
+    | powered-saw | 0.3855391333457478 |          
+    | alert-signal | 0.6359773072562782 |         
+    | music | 0.21516455980970542 |               
+    | human-voice | 0.8798293427878373 |          
+    | dog | 0.0289899311567318 |                  
 
-    | Coarse Tag Name | AUPRC |
-    | :--- | :--- |
-    | engine | 0.7123158311528364 |
-    | machinery-impact | 0.1977375098839912 |
-    | non-machinery-impact | 0.36390229164883725 |
-    | powered-saw | 0.3806229440451203 |
-    | alert-signal | 0.6359763541297692 |
-    | music | 0.21434381793269788 |
-    | human-voice | 0.8797772260748513 |
-    | dog | 0.029023621356626984 |
 
 #### Coarse-level evaluation:
 
-* Micro AUPRC: 0.6129494486332887
-* Micro F1-score (@0.5): 0.18859994746519568
-* Macro AUPRC: 0.529538808315017
-* Coarse Tag AUPRC:
-
-    | Coarse Tag Name | AUPRC |
-    | :--- | :--- |
-    | engine | 0.8594182260805483 |
-    | machinery-impact | 0.28421566934051423 |
-    | non-machinery-impact | 0.36390229164883725 |
-    | powered-saw | 0.7213513517777008 |
-    | alert-signal | 0.7538140209927924 |
-    | music | 0.28117173365709297 |
-    | human-voice | 0.9434135516660226 |
-    | dog | 0.029023621356626984 |
+* Micro AUPRC: 0.7424913328250053                        
+* Micro F1-score (@0.5): 0.5065590312815338              
+* Macro AUPRC: 0.5297273551638281                        
+* Coarse Tag AUPRC:                                      
+                                                         
+    | Coarse Tag Name | AUPRC |                   
+    | :--- | :--- |                                      
+    | engine | 0.8594524913674696 |               
+    | machinery-impact | 0.28532090723421905 |    
+    | non-machinery-impact | 0.36403054299960413 |
+    | powered-saw | 0.7200903371047481 |          
+    | alert-signal | 0.7536308641644877 |         
+    | music | 0.282907929536143 |                 
+    | human-voice | 0.9433958377472215 |          
+    | dog | 0.0289899311567318 |                  
 
 
 ### Coarse-level model
 
 #### Coarse-level evaluation:
 
-* Micro AUPRC: 0.6065255442848804
-* Micro F1-score (@0.5): 0.17652811735941318
-* Macro AUPRC: 0.5424039260371887
-* Coarse Tag AUPRC:
+* Micro AUPRC: 0.761602033798918                         
+* Micro F1-score (@0.5): 0.6741035856573705              
+* Macro AUPRC: 0.5422528970239988                        
+* Coarse Tag AUPRC:                                      
+                                                         
+    | Coarse Tag Name | AUPRC |                   
+    | :--- | :--- |                                      
+    | engine | 0.8552225117097685 |               
+    | machinery-impact | 0.3595869306870976 |     
+    | non-machinery-impact | 0.36067068831072385 |
+    | powered-saw | 0.6779980935124421 |          
+    | alert-signal | 0.8126810682348001 |         
+    | music | 0.2988632647455638 |                
+    | human-voice | 0.94516997783423 |            
+    | dog | 0.02783064115736446  |                
 
-    | Coarse Tag Name | AUPRC |
-    | :--- | :--- |
-    | engine | 0.8553324507222382 |
-    | machinery-impact | 0.3595472135240384 |
-    | non-machinery-impact | 0.3605524814511269 |
-    | powered-saw | 0.6769735915171646 |
-    | alert-signal | 0.8127157226473527 |
-    | music | 0.30084627536662073 |
-    | human-voice | 0.9451725429628454 |
-    | dog | 0.028091130106122388  |
