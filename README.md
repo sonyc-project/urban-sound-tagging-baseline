@@ -146,33 +146,19 @@ The area under the precision-recall curve (AUPRC) is the classification metric t
 
 The Urban Sound Tagging challenge provides two leaderboards of participants, according to two distinct metric: fine-grained AUPRC and coarse-grained AUPRC. In each of the two level of granularity, we vary tau between 0 and 1 and compute TP, FP, and FN for each coarse category. Then, we compute micro-averaged precision P = TP / (TP + FP) and recall R = TP / (TP + TN), giving an equal importance to every sample. We repeat the same operation for all values of tau in the interval [0, 1] that result in different values of P and R. Lastly, we use the trapezoidal rule to estimate the AUPRC.
 
-As an example, Figure 2 illustrates a Boolean circuit for the computation of TP, FP, and FN at the coarse level of granularity, in the coarse category of engines. This coarse category contains three complete fine-level tags: small engine, medium engine, and large engine. In addition, it also contains one incomplete fine-level tag: namely, all engines of uncertain size. By definition, this incomplete fine-level tag does not specify a precise size of engine. It does not specify whether one or multiple sizes of engines are present in the scene. However, this distinction is not relevant to the coarse-level leaderboard, in which all sizes of engines, be them known or unknown, get aggregated into a single coarse-level tag. Therefore, evaluating a system for urban sound tagging under a coarse level of granularity is relatively straightforward. First, we apply an exclusive disjunction ("OR" gate) to the predicted fine tags in each coarse category, and another exclusive disjunction to the ground truth fine tags in the same coarse category. Such disjunctions include the incomplete fine tag. This results in a coarsened prediction as well as a coarsened ground truth in label space. Then, we compare the coarsened prediction with the coarsened ground truth by means of a binary conjunction ("AND" gate). If this disjunction returns the value "true", then the coarse-level prediction is a true positive for the coarse category at hand. Likewise, we negate the prediction (resp. the ground truth) before applying the disjunction to compute a boolean flag indicating the presence of a false negative (resp. false positive).
+The computations can be summarized by the following expressions defined for each coarse category, where `t_0` and `y_0` correspond to the presence of an incomplete tag in the ground truth and prediction (respectively), and `t_k` and `y_k` (for `k = 1, ..., K`) correspond to the presence of fine tag `k` in the ground truth and prediction (respectively).
 
-
-### Figure 2
-
-![Boolean circuit for computing false negatives for coarse predictions.](./figs/coarse_fn.png)
-![Boolean circuit for computing false positives for coarse predictions.](./figs/coarse_fp.png)
-![Boolean circuit for computing true positives for coarse predictions.](./figs/coarse_tp.png)
-
-> *Boolean circuits for computing coarse-grained multilabel detection metrics in the coarse category of engines, in the presence of potentially incomplete ground truth. Rectangular and round boxes respectively ground truth tags and predicted tags. Boolean truth encodes the presence of a tag.*
+![Mathematical expressions for computing true positives, false positives, and false negatives at the coarse level.](./figs/coarse_metrics.png)
 
 For samples with complete ground truth (i.e., in the absence of the incomplete fine tag in the ground truth for the coarse category at hand), evaluating urban sound tagging at a fine level of granularity is also relatively straightforward. Indeed, for samples with complete ground truth, the computation of TP, FP, and FN amounts to pairwise conjunctions between predicted fine tags and corresponding ground truth fine tags, without any coarsening. Each fine tag produces either one TP (if it is present and predicted), one FP (if it it absent yet predicted), or one FN (if it is absent yet not predicted). Then, we apply one-hot integer encoding to these boolean values, and sum them up at the level of coarse categories before micro-averaging across coarse categories over the entire evaluation dataset. In this case, the sum (TP+FP+FN) is equal to the number of tags in the fine-grained taxonomy, i.e. 23. Furthermore, the sum (TP+FN) is equal to the number of truly present tags in the sample at hand.
 
-The situation becomes considerably more complex when the incomplete fine tag is present in the ground truth, because this presence hinders the possibility of precisely counting the number of false alarms in the coarse category at hand. We propose a pragmatic solution to this problem, which is illustrated in Figure 3. The guiding idea behind our solution is to evaluate the prediction at the fine level only when possible, and fall back to the coarse level if necessary.
+The situation becomes considerably more complex when the incomplete fine tag is present in the ground truth, because this presence hinders the possibility of precisely counting the number of false alarms in the coarse category at hand. We propose a pragmatic solution to this problem; the guiding idea behind our solution is to evaluate the prediction at the fine level only when possible, and fall back to the coarse level if necessary.
 
 For example, if a small engine is present in the ground truth and absent in the prediction, then it's a true positive in the coarse-grained sense, but a false negative in the fine-grained sense, even in the presence of incomplete ground truth. However, if a small engine is absent in the ground truth and present in the prediction, then the outcome of the evaluation will depend on the completeness of the ground truth for the coarse category of engines. If this coarse category is complete (i.e. if the tag "engine of uncertain size" is absent from the ground truth), then we may evaluate the small engine tag at the fine level, and count it as a false positive. Conversely, if the coarse category of engines is incomplete (i.e. the tag "engine of uncertain size" is present in the ground truth), then we fall back to coarse-level evaluation for the sample at hand, and count the small engine prediction as a true positive, in aggregation with potential predictions of medium engines and large engines.
 
+The computations can be summarized by the following expressions defined for each coarse category, where `t_0` and `y_0` correspond to the presence of an incomplete tag in the ground truth and prediction (respectively), and `t_k` and `y_k` (for `k = 1, ..., K`) correspond to the presence of fine tag `k` in the ground truth and prediction (respectively).
 
-### Figure 3
-
-![Boolean circuit for computing false negatives for fine predictions.](./figs/fine_fn.png)
-
-![Boolean circuit for computing false positives for fine predictions.](./figs/fine_fp.png)
-
-![Boolean circuit for computing true positives for fine predictions.](./figs/fine_tp.png)
-
-> *Boolean circuits for computing fine-grained multilabel detection metrics in the coarse category of engines, in the presence of potentially incomplete ground truth. Rectangular and round boxes respectively ground truth tags and predicted tags. Boolean truth encodes the presence of a tag.*
+![Mathematical expressions for computing true positives, false positives, and false negatives at the fine level.](./figs/fine_metrics.png)
 
 As a secondary metric, we report the micro-averaged F-score of the system, after fixing the value of the threshold to 0.5. This score is the harmonic mean between precision and recall: F = 2\*P\*R / (P + R). We only provide the F-score metric for purposes of post-hoc error analysis and do not use it at the time of producing the official leaderboard.
 
@@ -183,60 +169,59 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
 
 #### Fine-level evaluation:
 
-* Micro AUPRC: 0.6717253550113078                        
-* Micro F1-Score (@0.5): 0.5015353121801432              
-* Macro AUPRC: 0.427463730110938                         
-* Coarse Tag AUPRC:                                      
+* Micro AUPRC: 0.6717253550113078
+* Micro F1-score (@0.5): 0.5015353121801432
+* Macro AUPRC: 0.427463730110938
+* Coarse Tag AUPRC:
                                                          
-    | Coarse Tag Name | AUPRC |                   
-    | :--- | :--- |                                      
-    | engine | 0.7122944027927718 |               
-    | machinery-impact | 0.19788462073882798 |    
+    | Coarse Tag Name | AUPRC |
+    | :--- | :--- |
+    | engine | 0.7122944027927718 |
+    | machinery-impact | 0.19788462073882798 |
     | non-machinery-impact | 0.36403054299960413 |
-    | powered-saw | 0.3855391333457478 |          
-    | alert-signal | 0.6359773072562782 |         
-    | music | 0.21516455980970542 |               
-    | human-voice | 0.8798293427878373 |          
-    | dog | 0.0289899311567318 |                  
-
+    | powered-saw | 0.3855391333457478 |
+    | alert-signal | 0.6359773072562782 |
+    | music | 0.21516455980970542 |
+    | human-voice | 0.8798293427878373 |
+    | dog | 0.0289899311567318 |
 
 #### Coarse-level evaluation:
 
-* Micro AUPRC: 0.7424913328250053                        
-* Micro F1-score (@0.5): 0.5065590312815338              
-* Macro AUPRC: 0.5297273551638281                        
+* Micro AUPRC: 0.7424913328250053
+* Micro F1-score (@0.5): 0.5065590312815338
+* Macro AUPRC: 0.5297273551638281
+
 * Coarse Tag AUPRC:                                      
                                                          
-    | Coarse Tag Name | AUPRC |                   
-    | :--- | :--- |                                      
-    | engine | 0.8594524913674696 |               
-    | machinery-impact | 0.28532090723421905 |    
+    | Coarse Tag Name | AUPRC |
+    | :--- | :--- |
+    | engine | 0.8594524913674696 |
+    | machinery-impact | 0.28532090723421905 |
     | non-machinery-impact | 0.36403054299960413 |
-    | powered-saw | 0.7200903371047481 |          
-    | alert-signal | 0.7536308641644877 |         
-    | music | 0.282907929536143 |                 
-    | human-voice | 0.9433958377472215 |          
-    | dog | 0.0289899311567318 |                  
-
+    | powered-saw | 0.7200903371047481 |
+    | alert-signal | 0.7536308641644877 |
+    | music | 0.282907929536143 |
+    | human-voice | 0.9433958377472215 |
+    | dog | 0.0289899311567318 |
 
 ### Coarse-level model
 
 #### Coarse-level evaluation:
-* Micro AUPRC: 0.761602033798918                         
-* Micro F1-score (@0.5): 0.6741035856573705              
-* Macro AUPRC: 0.5422528970239988                        
-* Coarse Tag AUPRC:                                      
+* Micro AUPRC: 0.761602033798918
+* Micro F1-score (@0.5): 0.6741035856573705
+* Macro AUPRC: 0.5422528970239988
+* Coarse Tag AUPRC:
                                                          
-    | Coarse Tag Name | AUPRC |                   
-    | :--- | :--- |                                      
-    | engine | 0.8552225117097685 |               
-    | machinery-impact | 0.3595869306870976 |     
+    | Coarse Tag Name | AUPRC |
+    | :--- | :--- |
+    | engine | 0.8552225117097685 |
+    | machinery-impact | 0.3595869306870976 |
     | non-machinery-impact | 0.36067068831072385 |
-    | powered-saw | 0.6779980935124421 |          
-    | alert-signal | 0.8126810682348001 |         
-    | music | 0.2988632647455638 |                
+    | powered-saw | 0.6779980935124421 |
+    | alert-signal | 0.8126810682348001 |
+    | music | 0.2988632647455638 |
     | human-voice | 0.94516997783423 |            
-    | dog | 0.02783064115736446  |                
+    | dog | 0.02783064115736446 |
 
 ### Appendix: taxonomy of SONYC urban sound tags
 
