@@ -150,11 +150,16 @@ def confusion_matrix_fine(
     # Compute false positives for samples with incomplete ground truth.
     # For each sample n, is_FP_incomplete is equal to 1
     # if and only if the following two conditions are met:
-    # (i)   the incomplete fine tag is absent in the ground truth
-    # (ii)  the prediction of sample n contains the incomplete fine tag
+    # (i)   the ground truth does not contain the incomplete fine tag
+    # (ii)  no complete fine tags are in the ground truth
+    # (iii) the prediction contains the incomplete fine tag
+    # (iv)  not all complete fine tags are in the prediction
     # The result is a (N,) vector.
-    is_FP_incomplete = np.logical_and(
-        np.logical_not(is_true_incomplete), is_pred_incomplete)
+    is_FP_incomplete = np.logical_and.reduce((
+        np.logical_not(is_true_incomplete),
+        np.logical_not(np.logical_or.reduce(Y_true, axis=1)),
+        is_pred_incomplete,
+        np.logical_not(np.logical_and.reduce(Y_pred, axis=1))))
 
     # Compute false negatives for samples with incomplete ground truth.
     # For each sample n, is_FN_incomplete is equal to 1
