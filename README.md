@@ -171,60 +171,59 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
 
 #### Fine-level evaluation:
 
-* Micro AUPRC: 0.6717253550113078                        
-* Micro F1-Score (@0.5): 0.5015353121801432              
-* Macro AUPRC: 0.427463730110938                         
+* Micro AUPRC: 0.6717253550113078
+* Micro F1-score (@0.5): 0.5015353121801432
+* Macro AUPRC: 0.427463730110938
 * Coarse Tag AUPRC:
                                                          
-    | Coarse Tag Name | AUPRC |                   
-    | :--- | :--- |                                      
-    | engine | 0.7122944027927718 |               
-    | machinery-impact | 0.19788462073882798 |    
+    | Coarse Tag Name | AUPRC |
+    | :--- | :--- |
+    | engine | 0.7122944027927718 |
+    | machinery-impact | 0.19788462073882798 |
     | non-machinery-impact | 0.36403054299960413 |
-    | powered-saw | 0.3855391333457478 |          
-    | alert-signal | 0.6359773072562782 |         
-    | music | 0.21516455980970542 |               
-    | human-voice | 0.8798293427878373 |          
-    | dog | 0.0289899311567318 |                  
-
+    | powered-saw | 0.3855391333457478 |
+    | alert-signal | 0.6359773072562782 |
+    | music | 0.21516455980970542 |
+    | human-voice | 0.8798293427878373 |
+    | dog | 0.0289899311567318 |
 
 #### Coarse-level evaluation:
 
-* Micro AUPRC: 0.7424913328250053                        
-* Micro F1-score (@0.5): 0.5065590312815338              
-* Macro AUPRC: 0.5297273551638281                        
+* Micro AUPRC: 0.7424913328250053
+* Micro F1-score (@0.5): 0.5065590312815338
+* Macro AUPRC: 0.5297273551638281
+
 * Coarse Tag AUPRC:                                      
                                                          
-    | Coarse Tag Name | AUPRC |                   
-    | :--- | :--- |                                      
-    | engine | 0.8594524913674696 |               
-    | machinery-impact | 0.28532090723421905 |    
+    | Coarse Tag Name | AUPRC |
+    | :--- | :--- |
+    | engine | 0.8594524913674696 |
+    | machinery-impact | 0.28532090723421905 |
     | non-machinery-impact | 0.36403054299960413 |
-    | powered-saw | 0.7200903371047481 |          
-    | alert-signal | 0.7536308641644877 |         
-    | music | 0.282907929536143 |                 
-    | human-voice | 0.9433958377472215 |          
-    | dog | 0.0289899311567318 |                  
-
+    | powered-saw | 0.7200903371047481 |
+    | alert-signal | 0.7536308641644877 |
+    | music | 0.282907929536143 |
+    | human-voice | 0.9433958377472215 |
+    | dog | 0.0289899311567318 |
 
 ### Coarse-level model
 
 #### Coarse-level evaluation:
-* Micro AUPRC: 0.761602033798918                         
-* Micro F1-score (@0.5): 0.6741035856573705              
-* Macro AUPRC: 0.5422528970239988                        
-* Coarse Tag AUPRC:                                      
+* Micro AUPRC: 0.761602033798918
+* Micro F1-score (@0.5): 0.6741035856573705
+* Macro AUPRC: 0.5422528970239988
+* Coarse Tag AUPRC:
                                                          
-    | Coarse Tag Name | AUPRC |                   
-    | :--- | :--- |                                      
-    | engine | 0.8552225117097685 |               
-    | machinery-impact | 0.3595869306870976 |     
+    | Coarse Tag Name | AUPRC |
+    | :--- | :--- |
+    | engine | 0.8552225117097685 |
+    | machinery-impact | 0.3595869306870976 |
     | non-machinery-impact | 0.36067068831072385 |
-    | powered-saw | 0.6779980935124421 |          
-    | alert-signal | 0.8126810682348001 |         
-    | music | 0.2988632647455638 |                
+    | powered-saw | 0.6779980935124421 |
+    | alert-signal | 0.8126810682348001 |
+    | music | 0.2988632647455638 |
     | human-voice | 0.94516997783423 |            
-    | dog | 0.02783064115736446  |                
+    | dog | 0.02783064115736446 |
 
 ### Appendix: taxonomy of SONYC urban sound tags
 
