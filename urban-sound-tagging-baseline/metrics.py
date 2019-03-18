@@ -369,7 +369,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         # NB: we use the harmonic mean formula (1/F = 1/P + 1/R) rather than
         # the more common F = (2*P*R)/(P+R) in order circumvent the edge case
         # where both P and R are equal to 0 (i.e. TP = 0).
-        eval_df["F"] = 1 / (1/eval_df["P"] + 1/eval_df["R"])
+        eval_df["F"] = 2 / (1/eval_df["P"] + 1/eval_df["R"])
 
         # Store DataFrame in the dictionary.
         df_dict[coarse_id] = eval_df
@@ -451,7 +451,7 @@ def micro_averaged_auprc(df_dict, return_df=False):
         # NB: we use the harmonic mean formula (1/F = 1/P + 1/R) rather than
         # the more common F = (2*P*R)/(P+R) in order circumvent the edge case
         # where both P and R are equal to 0 (i.e. TP = 0).
-        eval_df["F"] = 1 / (1/eval_df["P"] + 1/eval_df["R"])
+        eval_df["F"] = 2 / (1/eval_df["P"] + 1/eval_df["R"])
 
         # Return
         return auprc, eval_df
