@@ -295,15 +295,15 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         # in the low-precision regime.
         thresholds = thresholds[np.searchsorted(thresholds, min_threshold):]
 
-        # List thresholds by restricting observed confidences to unique elements.
-        thresholds = np.unique(thresholds)
-
         # Append a 1 to the list of thresholds.
         # This will cause TP and FP to fall down to zero, but FN will be nonzero.
         # This is useful for estimating the low-recall regime, and it
         # facilitates micro-averaged AUPRC because if provides an upper bound
         # on valid thresholds across coarse categories.
         thresholds = np.append(thresholds, 1.0)
+
+        # List thresholds by restricting observed confidences to unique elements.
+        thresholds = np.unique(thresholds)[::-1]
 
         # Count number of thresholds.
         n_thresholds = len(thresholds)
@@ -320,13 +320,13 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
             is_true_incomplete = gt_df[incomplete_tag].values
 
             # Loop over thresholds in a decreasing order.
-            for i, threshold in enumerate(reversed(thresholds)):
+            for i, threshold in enumerate(thresholds):
                 # Threshold prediction for complete tag.
-                Y_pred = restricted_pred_df.values > threshold
+                Y_pred = restricted_pred_df.values >= threshold
 
                 # Threshold prediction for incomplete tag.
                 is_pred_incomplete =\
-                    pred_df[incomplete_tag].values > threshold
+                    pred_df[incomplete_tag].values >= threshold
 
                 # Evaluate.
                 TPs[i], FPs[i], FNs[i] = confusion_matrix_fine(
@@ -338,9 +338,9 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
             Y_true = restricted_gt_df.values
 
             # Loop over thresholds in a decreasing order.
-            for i, threshold in enumerate(reversed(thresholds)):
+            for i, threshold in enumerate(thresholds):
                 # Threshold prediction.
-                Y_pred = restricted_pred_df.values > threshold
+                Y_pred = restricted_pred_df.values >= threshold
 
                 # Evaluate.
                 TPs[i], FPs[i], FNs[i] = confusion_matrix_coarse(Y_true, Y_pred)
@@ -366,10 +366,10 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
         eval_df["R"] = TPs / np.maximum(TPs + FNs, mu)
 
         # Compute F1-scores.
-        # NB: we use the harmonic mean formula (1/F = 1/P + 1/R) rather than
+        # NB: we use the harmonic mean formula (2/F = 1/P + 1/R) rather than
         # the more common F = (2*P*R)/(P+R) in order circumvent the edge case
         # where both P and R are equal to 0 (i.e. TP = 0).
-        eval_df["F"] = 1 / (1/eval_df["P"] + 1/eval_df["R"])
+        eval_df["F"] = 2 / (1/eval_df["P"] + 1/eval_df["R"])
 
         # Store DataFrame in the dictionary.
         df_dict[coarse_id] = eval_df
@@ -448,10 +448,10 @@ def micro_averaged_auprc(df_dict, return_df=False):
     # If the DataFrame containing the full P-R curve is requested.
     if return_df:
         # Compute F1-scores.
-        # NB: we use the harmonic mean formula (1/F = 1/P + 1/R) rather than
+        # NB: we use the harmonic mean formula (2/F = 1/P + 1/R) rather than
         # the more common F = (2*P*R)/(P+R) in order circumvent the edge case
         # where both P and R are equal to 0 (i.e. TP = 0).
-        eval_df["F"] = 1 / (1/eval_df["P"] + 1/eval_df["R"])
+        eval_df["F"] = 2 / (1/eval_df["P"] + 1/eval_df["R"])
 
         # Return
         return auprc, eval_df
