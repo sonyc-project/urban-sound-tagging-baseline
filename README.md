@@ -237,3 +237,10 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
     | music | 0.30084627536662073 |
     | human-voice | 0.9451725429628454 |
     | dog | 0.028091130106122388  |
+
+
+### Appendix: taxonomy of SONYC urban sound tags
+
+We reproduce the classification taxonomy of the DCASE Urban Sound Challenge in the diagram below. Rectangular and round boxes respectively denote coarse and fine complete tags. For the sake of brevity, we do not explicitly show the incomplete fine tag in each coarse category.
+
+![Taxonomy of SONYC urban sound tags.](./figs/dcase_ust_taxonomy.png)
