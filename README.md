@@ -222,7 +222,6 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
 ### Coarse-level model
 
 #### Coarse-level evaluation:
-
 * Micro AUPRC: 0.761602033798918                         
 * Micro F1-score (@0.5): 0.6741035856573705              
 * Macro AUPRC: 0.5422528970239988                        
@@ -239,3 +238,8 @@ As a secondary metric, we report the micro-averaged F-score of the system, after
     | human-voice | 0.94516997783423 |            
     | dog | 0.02783064115736446  |                
 
+### Appendix: taxonomy of SONYC urban sound tags
+
+We reproduce the classification taxonomy of the DCASE Urban Sound Challenge in the diagram below. Rectangular and round boxes respectively denote coarse and fine complete tags. For the sake of brevity, we do not explicitly show the incomplete fine tag in each coarse category.
+
+![Taxonomy of SONYC urban sound tags.](./figs/dcase_ust_taxonomy.png)
