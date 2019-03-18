@@ -322,11 +322,11 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
             # Loop over thresholds in a decreasing order.
             for i, threshold in enumerate(thresholds):
                 # Threshold prediction for complete tag.
-                Y_pred = restricted_pred_df.values > threshold
+                Y_pred = restricted_pred_df.values >= threshold
 
                 # Threshold prediction for incomplete tag.
                 is_pred_incomplete =\
-                    pred_df[incomplete_tag].values > threshold
+                    pred_df[incomplete_tag].values >= threshold
 
                 # Evaluate.
                 TPs[i], FPs[i], FNs[i] = confusion_matrix_fine(
@@ -340,7 +340,7 @@ def evaluate(prediction_path, annotation_path, yaml_path, mode):
             # Loop over thresholds in a decreasing order.
             for i, threshold in enumerate(thresholds):
                 # Threshold prediction.
-                Y_pred = restricted_pred_df.values > threshold
+                Y_pred = restricted_pred_df.values >= threshold
 
                 # Evaluate.
                 TPs[i], FPs[i], FNs[i] = confusion_matrix_coarse(Y_true, Y_pred)
