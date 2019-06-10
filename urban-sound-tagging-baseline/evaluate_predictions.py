@@ -1,4 +1,7 @@
 import argparse
+import json
+import os
+import oyaml as yaml
 from metrics import evaluate, micro_averaged_auprc, macro_averaged_auprc
 
 
@@ -18,7 +21,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    with open(args.yaml_path) as f:
+        taxonomy = yaml.load(f)
+
+    metrics = {}
     for mode in ("fine", "coarse"):
+        metrics[mode] = {}
 
         df_dict = evaluate(args.prediction_path,
                            args.annotation_path,
@@ -31,13 +39,25 @@ if __name__ == '__main__':
         # Get index of first threshold that is at least 0.5
         thresh_0pt5_idx = (eval_df['threshold'] >= 0.5).nonzero()[0][0]
 
+        metrics[mode]["micro_auprc"] = micro_auprc
+        metrics[mode]["micro_f1"] = eval_df["F"][thresh_0pt5_idx]
+        metrics[mode]["macro_auprc"] = macro_auprc
+
         print("{} level evaluation:".format(mode.capitalize()))
         print("======================")
-        print(" * Micro AUPRC:           {}".format(micro_auprc))
-        print(" * Micro F1-score (@0.5): {}".format(eval_df["F"][thresh_0pt5_idx]))
-        print(" * Macro AUPRC:           {}".format(macro_auprc))
+        print(" * Micro AUPRC:           {}".format(metrics[mode]["micro_auprc"]))
+        print(" * Micro F1-score (@0.5): {}".format(metrics[mode]["micro_f1"]))
+        print(" * Macro AUPRC:           {}".format(metrics[mode]["macro_auprc"]))
         print(" * Coarse Tag AUPRC:")
 
         for coarse_id, auprc in class_auprc.items():
-            print("      - {}: {}".format(coarse_id, auprc))
+            coarse_name = taxonomy["coarse"][int(coarse_id)]
+            metrics[mode]["class_auprc"][coarse_name] = auprc
+            print("      - {}: {}".format(coarse_name, auprc))
+
+    prediction_fname = os.path.splitext(os.path.basename(args.prediction_path))[0]
+    eval_fname = "evaluation_{}.json".format(prediction_fname)
+    eval_path = os.path.join(os.path.dirname(args.prediction_path), eval_fname)
+    with open(eval_path, 'w') as f:
+        json.dump(metrics, f)
 
